@@ -115,7 +115,6 @@ def _build_chapters(toc_pages: List[dict]) -> List[dict]:
     for pi, p in enumerate(toc_pages):
         if p.get('_chapter_start') or current is None:
             if current:
-                _finalize_chapter(current)
                 chapters.append(current)
             current = {
                 'title': p['title'],
@@ -131,14 +130,8 @@ def _build_chapters(toc_pages: List[dict]) -> List[dict]:
                 'depth': p['depth'],
             })
     if current:
-        _finalize_chapter(current)
         chapters.append(current)
     return chapters
-
-
-def _finalize_chapter(ch: dict):
-    """计算章的有效锚点（用于切片起点）。"""
-    pass  # 不再需要，改用字节偏移
 
 
 def _chapter_slice_anchors(chapters: List[dict], toc_pages: List[dict],
