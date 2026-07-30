@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ book.metadata.title }}</title>
+    <style>
+        body { margin:0; padding:0; display:flex; height:100vh; overflow:hidden; font-family:Georgia,serif; background:#fff; }
+
+        #sidebar { width:280px; background:#f8f9fa; border-right:1px solid #e9ecef; overflow-y:auto; padding:16px 12px; flex-shrink:0; transition:margin-left .25s,opacity .25s; }
+        #sidebar.hidden { margin-left:-280px; opacity:0; pointer-events:none; }
+        .nav-home { display:block; margin-bottom:12px; color:#3498db; text-decoration:none; font-family:-apple-system,sans-serif; font-size:.85em; }
+        .panel-header { font-family:-apple-system,sans-serif; font-size:.8em; font-weight:bold; color:#868e96; letter-spacing:.5px; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #dee2e6; }
+
+        /* ── 章 ── */
+        .ch-item { margin-bottom:6px; }
+        .ch-row { display:flex; align-items:center; }
+        .ch-link { flex:1; text-decoration:none; color:#495057; font-size:.9em; font-weight:500; padding:5px 10px; border-radius:4px; line-height:1.35; font-family:-apple-system,sans-serif; cursor:pointer; }
+        .ch-link:hover { background:rgba(52,152,219,.08); }
+        .ch-link.active { background:#3498db; color:#fff; font-weight:bold; }
+        .ch-toggle { display:inline-grid; grid-template-columns:3px 3px; grid-template-rows:3px 3px; gap:2px; cursor:pointer; user-select:none; margin-right:6px; flex-shrink:0; opacity:.5; transition:opacity .15s; }
+        .ch-toggle:hover { opacity:.8; }
+        .ch-toggle.open { opacity:1; }
+        .ch-toggle i { display:block; width:3px; height:3px; background:#495057; border-radius:1px; }
+        .ch-toggle.open i { background:#3498db; }
+
+        /* ── 节框 ── */
+        .section-box { border:1px solid #e9ecef; border-radius:6px; background:#fbfcfd; padding:4px 6px; margin:4px 0 8px 12px; overflow:hidden; transition:max-height .2s,opacity .15s,padding .2s,margin .2s; }
+        .section-box.collapsed { max-height:0!important; opacity:0; padding-top:0; padding-bottom:0; margin-top:0; margin-bottom:0; border-width:0; }
+        .sec-link { display:block; text-decoration:none; color:#868e96; font-size:.85em; padding:4px 8px; border-radius:3px; line-height:1.35; font-family:-apple-system,sans-serif; cursor:pointer; }
+        .sec-link:hover { background:rgba(0,0,0,.03); color:#495057; }
+        .sec-link.active { color:#495057; font-weight:600; background:rgba(0,0,0,.045); }
+        .sec-link.d1 { padding-left:8px; }
+        .sec-link.d2 { padding-left:22px; font-size:.82em; }
+        .sec-link.d3 { padding-left:36px; font-size:.79em; }
+
+        #main { flex-grow:1; overflow-y:auto; position:relative; scroll-behavior:smooth; }
+        #chapter-view { max-width:700px; margin:0 auto; padding:40px 40px 120px; }
+        .ch-title-bar { font-family:-apple-system,sans-serif; font-size:1.6em; font-weight:bold; color:#1a1a2e; padding:16px 0 12px; margin-bottom:20px; border-bottom:2px solid #3498db; position:sticky; top:0; background:linear-gradient(180deg,#fff 70%,rgba(255,255,255,0)); z-index:10; backdrop-filter:blur(4px); }
+        .ch-content { line-height:1.8; font-size:1.15em; color:#212529; }
+        .ch-content p { margin-bottom:1.5em; text-align:justify; }
+        .ch-content img { max-width:100%; height:auto; display:block; margin:20px auto; }
+        .ch-content h1,.ch-content h2,.ch-content h3 { font-family:-apple-system,sans-serif; margin-top:1.5em; color:#333; }
+        .ch-content span[id] { scroll-margin-top:100px; }
+
+        #ch-loading { text-align:center; padding:60px; display:none; }
+        #ch-loading .spinner { display:inline-block; width:28px; height:28px; border:3px solid #e9ecef; border-top-color:#3498db; border-radius:50%; animation:spin .6s linear infinite; }
+        @keyframes spin { to{transform:rotate(360deg)} }
+
+        #sidebar-toggle { position:fixed; top:16px; right:24px; z-index:100; width:36px; height:36px; border:1px solid #dee2e6; border-radius:6px; background:#fff; cursor:pointer; font-size:18px; line-height:34px; text-align:center; color:#495057; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+        #sidebar-toggle:hover { background:#f1f3f5; }
+
+        #ch-nav { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:16px; background:rgba(255,255,255,.95); border:1px solid #dee2e6; border-radius:24px; padding:8px 20px; box-shadow:0 2px 12px rgba(0,0,0,.06); z-index:20; font-family:-apple-system,sans-serif; font-size:.9em; }
+        #ch-nav button { border:none; background:none; cursor:pointer; font-size:1.1em; color:#495057; padding:4px 8px; border-radius:4px; }
+        #ch-nav button:hover { background:#f1f3f5; color:#3498db; }
+        #ch-nav span { color:#868e96; white-space:nowrap; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <a href="/" class="nav-home">&larr; 书库</a>
+    <div class="panel-header">目 录</div>
+    <div id="toc-tree"></div>
+</div>
+
+<button id="sidebar-toggle" onclick="toggleSidebar()" title="目录">&#9776;</button>
+
+<div id="main">
+    <div id="chapter-view">
+        <div class="ch-title-bar" id="ch-title">{{ chapter_title }}</div>
+        <div class="ch-content" id="ch-content">{{ chapter_content | safe }}</div>
+    </div>
+    <div id="ch-loading"><div class="spinner"></div></div>
+</div>
+
+<div id="ch-nav">
+    <button id="ch-nav-prev" onclick="goChapter(-1)" title="上一章">&#9664;</button>
+    <span id="ch-nav-label"></span>
+    <button id="ch-nav-next" onclick="goChapter(1)" title="下一章">&#9654;</button>
+</div>
+
+<script>
+var BOOK_ID = "{{ book_id }}";
+var TOTAL = {{ total_chapters }};
+var currentChapter = {{ chapter_idx }};
+
+{% macro toc_json(items) %}
+[{% for item in items %}{
+    "title": {{ item.title | tojson }},
+    "href": {{ item.href | tojson }},
+    "children": {{ toc_json(item.children) if item.children else '[]' }}
+}{% if not loop.last %},{% endif %}{% endfor %}]
+{% endmacro %}
+var tocTree = {{ toc_json(heading_toc) }};
+
+var sectionObserver = null;
+
+// ── 构建 TOC ──
+function buildToc() {
+    var root = document.getElementById('toc-tree');
+    root.innerHTML = '';
+    for (var i = 0; i < tocTree.length; i++) {
+        root.appendChild(buildChapter(tocTree[i], i));
+    }
+}
+
+function buildChapter(ch, idx) {
+    var div = document.createElement('div');
+    div.className = 'ch-item';
+
+    var row = document.createElement('div');
+    row.className = 'ch-row';
+    var hasKids = ch.children && ch.children.length > 0;
+
+    var toggle = document.createElement('span');
+    toggle.className = 'ch-toggle';
+    toggle.style.visibility = hasKids ? 'visible' : 'hidden';
+    toggle.onclick = function(e) { e.stopPropagation(); toggleSectionBox(box, toggle); };
+    // 四个小方块
+    for (var s = 0; s < 4; s++) { var sq = document.createElement('i'); toggle.appendChild(sq); }
+    row.appendChild(toggle);
+
+    var link = document.createElement('a');
+    link.className = 'ch-link';
+    link.textContent = ch.title;
+    link.href = '#';
+    link.onclick = function(e) { e.preventDefault(); loadChapter(idx); };
+    row.appendChild(link);
+    div.appendChild(row);
+
+    // 节框
+    var box = document.createElement('div');
+    box.className = 'section-box';
+    if (hasKids) {
+        box.classList.add('collapsed');
+        buildSections(ch.children, box, idx, 1, null);
+    } else {
+        box.style.display = 'none';
+    }
+    div.appendChild(box);
+    // 存引用用于折叠
+    div._sectionBox = box;
+    div._toggle = toggle;
+
+    return div;
+}
+
+function buildSections(children, container, chapterIdx, depth, parentEl) {
+    for (var i = 0; i < children.length; i++) {
+        var s = children[i];
+        var link = document.createElement('a');
+        link.className = 'sec-link d' + depth;
+        link.textContent = s.title;
+        link.href = '#';
+        var anchor = (s.href || '').split('#')[1] || '';
+        link.setAttribute('data-anchor', anchor);
+        link._parentSection = parentEl;
+        link.onclick = function(anch, chIdx) {
+            return function(e) {
+                e.preventDefault();
+                if (currentChapter !== chIdx) {
+                    loadChapter(chIdx, 'top', anch);
+                } else {
+                    scrollToSection(anch);
+                }
+            };
+        }(anchor, chapterIdx);
+        container.appendChild(link);
+
+        if (s.children && s.children.length > 0) {
+            buildSections(s.children, container, chapterIdx, depth + 1, link);
+        }
+    }
+}
+
+function toggleSectionBox(box, toggle) {
+    if (!box) return;
+    if (box.classList.contains('collapsed')) {
+        box.classList.remove('collapsed');
+        box.style.maxHeight = box.scrollHeight + 'px';
+        if (toggle) toggle.classList.add('open');
+        setTimeout(function() { box.style.maxHeight = ''; }, 50);
+    } else {
+        box.style.maxHeight = box.scrollHeight + 'px';
+        void box.offsetHeight;
+        box.classList.add('collapsed');
+        if (toggle) toggle.classList.remove('open');
+    }
+}
+
+buildToc();
+
+// ── 展开当前章 ──
+function expandCurrentChapter(idx) {
+    var items = document.querySelectorAll('#toc-tree > .ch-item');
+    items.forEach(function(div, i) {
+        var link = div.querySelector('.ch-link');
+        if (link) link.classList.toggle('active', i === idx);
+        // 展开当前章
+        var box = div._sectionBox;
+        if (box) {
+            if (i === idx) {
+                box.classList.remove('collapsed');
+                box.style.maxHeight = '';
+                var tgl = div._toggle;
+                if (tgl) tgl.classList.add('open');
+            }
+        }
+        var tgl = div._toggle;
+        if (tgl) {
+            var isOpen = (i === idx && box && !box.classList.contains('collapsed'));
+            if (isOpen) tgl.classList.add('open'); else tgl.classList.remove('open');
+        }
+    });
+}
+
+// ── 多级联动高亮 ──
+function highlightSectionLink(anchor) {
+    // 先清除所有节高亮
+    document.querySelectorAll('.sec-link.active').forEach(function(l) { l.classList.remove('active'); });
+    if (!anchor) return;
+
+    // 找到当前锚点对应的节链接
+    var link = document.querySelector('.sec-link[data-anchor="' + CSS.escape(anchor) + '"]');
+    if (!link) return;
+
+    // 高亮自身 + 所有父级节
+    var cur = link;
+    while (cur && cur.classList.contains('sec-link')) {
+        cur.classList.add('active');
+        cur = cur._parentSection;
+    }
+    // 滚动到可视区
+    link.scrollIntoView({ block: 'nearest' });
+}
+
+// ── IntersectionObserver 节高亮 ──
+function setupObserver() {
+    if (sectionObserver) sectionObserver.disconnect();
+    var content = document.getElementById('ch-content');
+    var elements = content.querySelectorAll('[id]');
+    if (elements.length === 0) return;
+
+    sectionObserver = new IntersectionObserver(function(entries) {
+        var best = null;
+        entries.forEach(function(e) {
+            if (e.isIntersecting) {
+                if (!best || e.boundingClientRect.top < best.boundingClientRect.top) {
+                    best = e;
+                }
+            }
+        });
+        if (best) highlightSectionLink(best.target.id);
+    }, { rootMargin: '-80px 0px -60% 0px' });
+
+    elements.forEach(function(el) { sectionObserver.observe(el); });
+}
+
+function scrollToSection(anchor) {
+    var el = document.getElementById(anchor);
+    if (!el) return;
+    var bar = document.getElementById('ch-title');
+    var barH = bar ? bar.offsetHeight + 20 : 20;
+    var mainEl = document.getElementById('main');
+    var mt = mainEl.getBoundingClientRect().top;
+    var et = el.getBoundingClientRect().top;
+    mainEl.style.scrollBehavior = 'auto';
+    mainEl.scrollTop = Math.max(0, et - mt + mainEl.scrollTop - barH);
+    requestAnimationFrame(function() { mainEl.style.scrollBehavior = 'smooth'; });
+}
+
+// ── 章加载 ──
+var chLock = false;
+var mainEl = document.getElementById('main');
+
+function goChapter(delta) {
+    if (chLock) return;
+    var next = currentChapter + delta;
+    if (next < 0 || next >= TOTAL) return;
+    loadChapter(next, delta > 0 ? 'top' : 'bottom');
+}
+
+async function loadChapter(idx, scrollTo, anchor) {
+    if (idx < 0 || idx >= TOTAL) return;
+    chLock = true;
+    currentChapter = idx;
+    history.replaceState(null, '', '/read/' + BOOK_ID + '/' + idx);
+    expandCurrentChapter(idx);
+
+    var loadEl = document.getElementById('ch-loading');
+    var timer = setTimeout(function() { loadEl.style.display = 'block'; }, 200);
+    try {
+        var resp = await fetch('/api/full_chapter/' + BOOK_ID + '/' + idx);
+        var data = await resp.json();
+        document.getElementById('ch-title').textContent = data.title;
+        document.getElementById('ch-content').innerHTML = data.html;
+        setupObserver();
+        if (anchor) {
+            requestAnimationFrame(function() { scrollToSection(anchor); });
+        } else {
+            mainEl.style.scrollBehavior = 'auto';
+            mainEl.scrollTop = (scrollTo === 'bottom') ? mainEl.scrollHeight : 0;
+            requestAnimationFrame(function() { mainEl.style.scrollBehavior = 'smooth'; });
+        }
+        updateNavLabel();
+    } catch(e) { console.error(e); }
+    finally { clearTimeout(timer); loadEl.style.display = 'none'; chLock = false; }
+}
+
+function updateNavLabel() {
+    document.getElementById('ch-nav-label').textContent = (currentChapter + 1) + ' / ' + TOTAL;
+    document.getElementById('ch-nav-prev').style.visibility = currentChapter > 0 ? 'visible' : 'hidden';
+    document.getElementById('ch-nav-next').style.visibility = currentChapter < TOTAL - 1 ? 'visible' : 'hidden';
+}
+
+// ── 初始化 ──
+expandCurrentChapter(currentChapter);
+updateNavLabel();
+setupObserver();
+
+mainEl.addEventListener('wheel', function(e) {
+    var atBottom = mainEl.scrollTop + mainEl.clientHeight >= mainEl.scrollHeight - 4;
+    var atTop = mainEl.scrollTop <= 4;
+    if (atBottom && e.deltaY > 30 && !chLock) goChapter(1);
+    else if (atTop && e.deltaY < -30 && !chLock) goChapter(-1);
+}, { passive: true });
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') goChapter(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'PageUp')   goChapter(-1);
+});
+
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('hidden');
+}
+</script>
+</body>
+</html>
