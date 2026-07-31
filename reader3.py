@@ -69,6 +69,11 @@ class Book:
 
 # --- Utilities ---
 
+# ═══════════════════════════════════════════
+# 基础工具函数
+# ═══════════════════════════════════════════
+
+# ── HTML 清理 ──
 def clean_html_content(soup: BeautifulSoup) -> BeautifulSoup:
     """【HTML清理】移除 script/style/iframe/nav/form 等无关标签"""
 
@@ -87,6 +92,7 @@ def clean_html_content(soup: BeautifulSoup) -> BeautifulSoup:
     return soup
 
 
+# ── 纯文本提取 ──
 def extract_plain_text(soup: BeautifulSoup) -> str:
     """【纯文本提取】从 BeautifulSoup 对象提取纯文本"""
     text = soup.get_text(separator=' ')
@@ -94,6 +100,7 @@ def extract_plain_text(soup: BeautifulSoup) -> str:
     return ' '.join(text.split())
 
 
+# ── NCX 目录递归解析 ──
 def parse_toc_recursive(toc_list, depth=0) -> List[TOCEntry]:
     """【NCX目录解析】递归解析 EPUB 原始 NCX 目录为 TOCEntry 树"""
     result = []
@@ -131,6 +138,7 @@ def parse_toc_recursive(toc_list, depth=0) -> List[TOCEntry]:
     return result
 
 
+# ── 兜底目录（NCX 为空时）──
 def get_fallback_toc(book_obj) -> List[TOCEntry]:
     """【兜底目录】当 NCX 为空时，从 Spine 构建平坦目录"""
     toc = []
@@ -143,6 +151,7 @@ def get_fallback_toc(book_obj) -> List[TOCEntry]:
     return toc
 
 
+# ── 元数据提取 ──
 def extract_metadata_robust(book_obj) -> BookMetadata:
     """【元数据提取】健壮地提取 EPUB 元数据（标题、作者、语言等）"""
     def get_list(key):
@@ -199,6 +208,11 @@ _HEADING_PATTERNS = [
 ]
 
 
+# ═══════════════════════════════════════════
+# 标题检测系统
+# ═══════════════════════════════════════════
+
+# ── 层级判定（1=章 2=节 3=小节...）──
 def _determine_level(text: str) -> int:
     """【层级判定】根据标题文本模式判断层级（1=章,2=节,5=数字子节等）"""
     # Strip enclosing brackets before pattern matching
@@ -231,6 +245,7 @@ def _determine_level(text: str) -> int:
     return 2
 
 
+# ── 标题评分（≥30 为候选标题）──
 def _score_heading_candidate(text: str) -> int:
     """【标题评分】评估一段文本是否为标题（0=非标题，越高越像）"""
     if len(text) < 2 or len(text) > 80:
@@ -288,6 +303,7 @@ def _score_heading_candidate(text: str) -> int:
     return score
 
 
+# ── 文本标题检测（方法 A/B/C/D 四轮）──
 def _detect_headings_from_text(soup, chapter_href: str, book_title: str = '') -> list:
     """【文本标题检测】从纯文本 EPUB 中检测标题（方法A/B/C/D四轮）"""
     headings = []
@@ -447,6 +463,7 @@ def _detect_headings_from_text(soup, chapter_href: str, book_title: str = '') ->
     return headings
 
 
+# ── 标题清洗（截断正文后缀、去括号噪音）──
 def _clean_title(title: str, max_len: int = 100) -> str:
     """【标题清洗】截断正文后缀、去除括号噪音、限制长度"""
     title = title.strip()
@@ -497,6 +514,7 @@ def _clean_title(title: str, max_len: int = 100) -> str:
     return title.strip()
 
 
+# ── 目录条目递归清洗 ──
 def _clean_toc_entries(entries: list, depth: int = 0, filter_depth0: bool = True) -> list:
     """【目录清洗】递归清洗 TOC 条目，过滤非标题条目"""
     cleaned = []
@@ -523,6 +541,11 @@ def _clean_toc_entries(entries: list, depth: int = 0, filter_depth0: bool = True
     return cleaned
 
 
+# ═══════════════════════════════════════════
+# 锚点注入 & 标题目录构建
+# ═══════════════════════════════════════════
+
+# ── 为章节 HTML 注入标题锚点 id ──
 def inject_heading_ids(chapter: ChapterContent, book_title: str = '') -> str:
     """【锚点注入】为章节内的标题标签注入 id 属性（方法1:HTML标签 方法2:文本检测 方法3:内联）"""
     soup = BeautifulSoup(chapter.content, 'html.parser')
@@ -585,6 +608,7 @@ def inject_heading_ids(chapter: ChapterContent, book_title: str = '') -> str:
     return str(soup) if modified else chapter.content
 
 
+# ── 子标题挂载（检测并挂载到父级 NCX 条目）──
 def _attach_sub_headings(toc_entries: List[TOCEntry], book: Book) -> List[TOCEntry]:
     """【子标题挂载】检测章节内的子标题并挂载到父级 TOC 条目下"""
     def _titles_are_similar(a: str, b: str) -> bool:
@@ -685,6 +709,7 @@ def _attach_sub_headings(toc_entries: List[TOCEntry], book: Book) -> List[TOCEnt
     return toc_entries
 
 
+# ── 标题目录构建（入口：HTML标签 → 文本检测+NCX → 纯文本 → 兜底）──
 def build_heading_based_toc(book: Book) -> List[TOCEntry]:
     """【标题目录构建】构建完整层级目录——优先 HTML 标签，回退到文本检测+NCX"""
     all_headings: List[dict] = []
@@ -776,6 +801,7 @@ def build_heading_based_toc(book: Book) -> List[TOCEntry]:
     return cleaned_original if cleaned_original else _headings_to_tree(text_headings, use_levels=False)
 
 
+# ── NCX-HTML 锚点匹配（标准化模糊匹配）──
 def _match_ncx_to_html(ncx_entries: List[TOCEntry], html_by_file: Dict[str, List[dict]]):
     """【NCX-HTML锚点匹配】将 HTML 标题的锚点 id 复制到匹配的 NCX 条目上"""
     def _normalize(s: str) -> str:
@@ -810,6 +836,7 @@ def _match_ncx_to_html(ncx_entries: List[TOCEntry], html_by_file: Dict[str, List
     _walk(ncx_entries)
 
 
+# ── 标题树构建（扁平列表 → 嵌套 TOCEntry 树）──
 def _headings_to_tree(headings: List[dict], use_levels: bool = True) -> List[TOCEntry]:
     """【标题树构建】将扁平的标题 dict 列表转换为嵌套的 TOCEntry 树"""
     if not use_levels:
@@ -849,6 +876,11 @@ def _headings_to_tree(headings: List[dict], use_levels: bool = True) -> List[TOC
 
 # --- SQLite processing ---
 
+# ═══════════════════════════════════════════
+# SQLite 处理
+# ═══════════════════════════════════════════
+
+# ── 段落拆分（策略: <p> → <br> → \u3000\u3000）──
 def _split_paragraphs(html: str) -> list:
     """【段落拆分】将章节 HTML 拆分为段落列表（策略: <p> → <br> → \u3000\u3000）"""
     soup = BeautifulSoup(html, 'html.parser')
@@ -930,6 +962,7 @@ def _split_paragraphs(html: str) -> list:
     return result
 
 
+# ── EPUB 处理入库（入口）──
 def process_epub_to_sqlite(epub_path: str, books_dir: str = "books") -> str:
     """【EPUB处理入库】将 EPUB 解析后写入 SQLite 数据库，返回输出目录路径"""
     from schema import get_db
@@ -1082,6 +1115,7 @@ def process_epub_to_sqlite(epub_path: str, books_dir: str = "books") -> str:
 
 # --- CLI ---
 
+# ── 命令行入口 ──
 if __name__ == "__main__":
 
     import sys

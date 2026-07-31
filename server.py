@@ -27,6 +27,8 @@ _unified_html_cache: Dict[str, str] = {}  # book_id → 拼接全书的 HTML（�
 
 # ── Helpers ──
 
+# ── 统一 HTML 构建 ──
+
 def _get_unified_html(book: Book) -> str:
     """【统一HTML】将所有 spine 文件拼接为一个 HTML 文档并注入标题锚点。"""
     unified = ''
@@ -36,12 +38,16 @@ def _get_unified_html(book: Book) -> str:
     return unified
 
 
+# ── 统一 HTML 缓存 ──
+
 def _get_unified_html_cached(book_id: str, book: Book) -> str:
     """【统一HTML缓存】获取带缓存的统一 HTML"""
     if book_id not in _unified_html_cache:
         _unified_html_cache[book_id] = _get_unified_html(book)
     return _unified_html_cache[book_id]
 
+
+# ── Spine 文件字节偏移 ──
 
 def _get_spine_offsets(book: Book) -> List[int]:
     """【文件偏移】返回每个 spine 文件在统一 HTML 中的起始字节偏移（按 spine_order 索引）。"""
@@ -54,7 +60,7 @@ def _get_spine_offsets(book: Book) -> List[int]:
     return offsets
 
 
-# ── Helpers ──
+# ── 标题目录缓存 ──
 
 def _get_heading_toc(book_id: str, book: Book) -> List[TOCEntry]:
     """【标题目录缓存】获取带缓存的标题式目录"""
@@ -62,6 +68,8 @@ def _get_heading_toc(book_id: str, book: Book) -> List[TOCEntry]:
         _heading_toc_cache[book_id] = build_heading_based_toc(book)
     return _heading_toc_cache[book_id]
 
+
+# ── 分页构建（标题树 → 页面列表）──
 
 def _build_toc_pages(book: Book, heading_toc: List[TOCEntry]) -> List[dict]:
     """【分页构建】将标题树展平为页面列表，每标题一页。
@@ -93,6 +101,8 @@ def _build_toc_pages(book: Book, heading_toc: List[TOCEntry]) -> List[dict]:
     return raw_pages
 
 
+# ── 分页缓存 ──
+
 def _get_toc_pages(book_id: str, book: Book) -> List[dict]:
     """【分页缓存】获取带缓存的分页列表"""
     cache_key = f"{book_id}_pages"
@@ -103,6 +113,8 @@ def _get_toc_pages(book_id: str, book: Book) -> List[dict]:
         _get_toc_pages._cache[cache_key] = _build_toc_pages(book, heading_toc)
     return _get_toc_pages._cache[cache_key]
 
+
+# ── 章构建（页面 → 章分组）──
 
 def _build_chapters(toc_pages: List[dict]) -> List[dict]:
     """【章构建】将页面按 _chapter_start 分组为章列表。
@@ -133,6 +145,8 @@ def _build_chapters(toc_pages: List[dict]) -> List[dict]:
         chapters.append(current)
     return chapters
 
+
+# ── 章切片锚点计算 ──
 
 def _chapter_slice_anchors(chapters: List[dict], toc_pages: List[dict],
                            book: Book, chapter_idx: int):
@@ -170,6 +184,8 @@ def _chapter_slice_anchors(chapters: List[dict], toc_pages: List[dict],
     return start, end
 
 
+# ── HTML 标签起始位置查找 ──
+
 def _find_tag_start(html: str, id_pos: int) -> int:
     """【标签定位】从 id 属性位置反查所在 HTML 标签的开头 < 位置"""
     tag_start = html.rfind('<', 0, id_pos)
@@ -181,6 +197,8 @@ def _find_tag_start(html: str, id_pos: int) -> int:
         return id_pos
     return tag_start
 
+
+# ── 内容切片（锚点间 HTML 片段提取）──
 
 def _slice_content(full_html: str, anchor: str, next_anchor: Optional[str]) -> str:
     """【内容切片】从完整 HTML 中切出两个锚点之间的内容片段。
@@ -216,6 +234,8 @@ def _slice_content(full_html: str, anchor: str, next_anchor: Optional[str]) -> s
 
     return result
 
+
+# ── 从 SQLite 重建 Book 对象 ──
 
 def _load_book_from_sqlite(folder_name: str) -> Optional[Book]:
     """【SQLite加载】从 SQLite 数据库重建 Book 对象（含缓存）"""
@@ -280,10 +300,17 @@ def _load_book_from_sqlite(folder_name: str) -> Optional[Book]:
     return book
 
 
+# ── 书籍加载公开接口 ──
+
 def load_book_cached(folder_name: str) -> Optional[Book]:
     """【书籍加载】从 SQLite 数据库加载一本书"""
     return _load_book_from_sqlite(folder_name)
 
+# ═══════════════════════════════════════════
+# HTTP 路由
+# ═══════════════════════════════════════════
+
+# ── 书库首页 GET / ──
 @app.get("/", response_class=HTMLResponse)
 async def library_view(request: Request):
     """【书库页面】列出所有已处理书籍的首页"""
@@ -328,6 +355,7 @@ async def library_view(request: Request):
 
     return templates.TemplateResponse(request, "library.html", {"books": books})
 
+# ── 上传处理 POST /upload ──
 @app.post("/upload")
 async def upload_epub(file: UploadFile = File(...)):
     """【上传处理】接收 EPUB/TXT 文件，处理后加入书库"""
@@ -377,11 +405,13 @@ async def upload_epub(file: UploadFile = File(...)):
     finally:
         os.unlink(tmp_path)
 
+# ── 首页跳转 GET /read/{book_id} → 第 0 章 ──
 @app.get("/read/{book_id}", response_class=HTMLResponse)
 async def redirect_to_first_chapter(request: Request, book_id: str):
     """【首页跳转】重定向到书籍第 0 章"""
     return await read_chapter(request=request, book_id=book_id, chapter_idx=0)
 
+# ── 阅读页面 GET /read/{book_id}/{chapter_idx} ──
 @app.get("/read/{book_id}/{chapter_idx}", response_class=HTMLResponse)
 async def read_chapter(request: Request, book_id: str, chapter_idx: int):
     """【阅读页面】chapter_idx = 章索引（0-based），每章为连续滚动页"""
@@ -413,6 +443,7 @@ async def read_chapter(request: Request, book_id: str, chapter_idx: int):
         "total_chapters": len(chapters),
     })
 
+# ── 整章 AJAX API GET /api/full_chapter/{book_id}/{chapter_idx} ──
 @app.get("/api/full_chapter/{book_id}/{chapter_idx}")
 async def api_full_chapter(book_id: str, chapter_idx: int):
     """【整章API】返回一整章的 HTML + 节列表"""
@@ -440,6 +471,7 @@ async def api_full_chapter(book_id: str, chapter_idx: int):
         "total_chapters": len(chapters),
     })
 
+# ── 图片服务 GET /read/{book_id}/images/{image_name} ──
 @app.get("/read/{book_id}/images/{image_name}")
 async def serve_image(book_id: str, image_name: str):
     """【图片服务】返回书籍内的图片文件"""
@@ -450,6 +482,7 @@ async def serve_image(book_id: str, image_name: str):
         raise HTTPException(status_code=404, detail="Image not found")
     return FileResponse(img_path)
 
+# ── 服务器入口 ──
 if __name__ == "__main__":
     import uvicorn
     print("Starting server at http://127.0.0.1:8123")

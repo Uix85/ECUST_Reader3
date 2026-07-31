@@ -18,10 +18,10 @@
         .ch-link { flex:1; text-decoration:none; color:#495057; font-size:.9em; font-weight:500; padding:5px 10px; border-radius:4px; line-height:1.35; font-family:-apple-system,sans-serif; cursor:pointer; }
         .ch-link:hover { background:rgba(52,152,219,.08); }
         .ch-link.active { background:#3498db; color:#fff; font-weight:bold; }
-        .ch-toggle { display:inline-grid; grid-template-columns:3px 3px; grid-template-rows:3px 3px; gap:2px; cursor:pointer; user-select:none; margin-right:6px; flex-shrink:0; opacity:.5; transition:opacity .15s; }
+        .ch-toggle { display:inline-grid; grid-template-columns:4px 4px; grid-template-rows:4px 4px; gap:3px; cursor:pointer; user-select:none; flex-shrink:0; opacity:.5; transition:opacity .15s; padding:6px 8px; margin-right:2px; align-self:center; }
         .ch-toggle:hover { opacity:.8; }
         .ch-toggle.open { opacity:1; }
-        .ch-toggle i { display:block; width:3px; height:3px; background:#495057; border-radius:1px; }
+        .ch-toggle i { display:block; width:4px; height:4px; background:#495057; border-radius:1px; }
         .ch-toggle.open i { background:#3498db; }
 
         /* ── 节框 ── */
@@ -33,6 +33,19 @@
         .sec-link.d1 { padding-left:8px; }
         .sec-link.d2 { padding-left:22px; font-size:.82em; }
         .sec-link.d3 { padding-left:36px; font-size:.79em; }
+
+        /* ── 节内子级折叠 ── */
+        .sec-row { display:flex; align-items:center; }
+        .sec-toggle { width:48px; height:28px; flex-shrink:0; cursor:pointer; user-select:none; opacity:.35; transition:opacity .15s,transform .15s; font-size:18px; line-height:28px; text-align:center; margin-right:2px; }
+        .sec-toggle:hover { opacity:.7; }
+        .sec-toggle.open { transform:rotate(90deg); }
+        .sec-kids { overflow:hidden; transition:max-height .2s,opacity .15s; }
+        .sec-kids.collapsed { max-height:0!important; opacity:0; }
+        /* 层级缩进 */
+        .sec-row.d1 { padding-left:4px; }
+        .sec-row.d2 { padding-left:18px; }
+        .sec-row.d3 { padding-left:32px; }
+        .sec-row.d4 { padding-left:46px; }
 
         #main { flex-grow:1; overflow-y:auto; position:relative; scroll-behavior:smooth; }
         #chapter-view { max-width:700px; margin:0 auto; padding:40px 40px 120px; }
@@ -149,6 +162,19 @@ function buildChapter(ch, idx) {
 function buildSections(children, container, chapterIdx, depth, parentEl) {
     for (var i = 0; i < children.length; i++) {
         var s = children[i];
+        var hasKids = s.children && s.children.length > 0;
+
+        // 行容器：节链接 + 折叠按钮
+        var row = document.createElement('div');
+        row.className = 'sec-row d' + depth;
+
+        // 折叠按钮（有子节时显示 ▸）
+        var stoggle = document.createElement('span');
+        stoggle.className = 'sec-toggle';
+        stoggle.textContent = hasKids ? '\u25B8' : '';
+        stoggle.style.visibility = hasKids ? 'visible' : 'hidden';
+        row.appendChild(stoggle);
+
         var link = document.createElement('a');
         link.className = 'sec-link d' + depth;
         link.textContent = s.title;
@@ -166,11 +192,33 @@ function buildSections(children, container, chapterIdx, depth, parentEl) {
                 }
             };
         }(anchor, chapterIdx);
-        container.appendChild(link);
+        row.appendChild(link);
+        container.appendChild(row);
 
-        if (s.children && s.children.length > 0) {
-            buildSections(s.children, container, chapterIdx, depth + 1, link);
+        // 子节容器（默认折叠）
+        if (hasKids) {
+            var kids = document.createElement('div');
+            kids.className = 'sec-kids collapsed';
+            stoggle.onclick = function(kd, tg) {
+                return function(e) { e.stopPropagation(); toggleSecKids(kd, tg); };
+            }(kids, stoggle);
+            buildSections(s.children, kids, chapterIdx, depth + 1, link);
+            container.appendChild(kids);
         }
+    }
+}
+
+function toggleSecKids(kids, toggle) {
+    if (kids.classList.contains('collapsed')) {
+        kids.classList.remove('collapsed');
+        kids.style.maxHeight = kids.scrollHeight + 'px';
+        toggle.classList.add('open');
+        setTimeout(function() { kids.style.maxHeight = ''; }, 50);
+    } else {
+        kids.style.maxHeight = kids.scrollHeight + 'px';
+        void kids.offsetHeight;
+        kids.classList.add('collapsed');
+        toggle.classList.remove('open');
     }
 }
 
@@ -197,20 +245,16 @@ function expandCurrentChapter(idx) {
     items.forEach(function(div, i) {
         var link = div.querySelector('.ch-link');
         if (link) link.classList.toggle('active', i === idx);
-        // 展开当前章
         var box = div._sectionBox;
-        if (box) {
-            if (i === idx) {
-                box.classList.remove('collapsed');
-                box.style.maxHeight = '';
-                var tgl = div._toggle;
-                if (tgl) tgl.classList.add('open');
-            }
+        var isCurrent = (i === idx);
+        if (box && isCurrent) {
+            box.classList.remove('collapsed');
+            box.style.maxHeight = '';
         }
         var tgl = div._toggle;
         if (tgl) {
-            var isOpen = (i === idx && box && !box.classList.contains('collapsed'));
-            if (isOpen) tgl.classList.add('open'); else tgl.classList.remove('open');
+            var isOpen = (isCurrent && box && !box.classList.contains('collapsed'));
+            tgl.classList.toggle('open', isOpen);
         }
     });
 }
@@ -218,13 +262,14 @@ function expandCurrentChapter(idx) {
 // ── 多级联动高亮 ──
 function highlightSectionLink(anchor) {
     document.querySelectorAll('.sec-link.active').forEach(function(l) { l.classList.remove('active'); });
-    if (!anchor) return;
+    if (!anchor) return null;
     var link = document.querySelector('.sec-link[data-anchor="' + CSS.escape(anchor) + '"]');
-    if (!link) return;
+    if (!link) return null;
     for (var cur = link; cur && cur.classList.contains('sec-link'); cur = cur._parentSection) {
         cur.classList.add('active');
     }
     link.scrollIntoView({ block: 'nearest' });
+    return link;
 }
 
 // ── 预计算锚点位置，滚动时纯数组查找 ──
@@ -257,7 +302,17 @@ function updateHighlight() {
         if (_sectionRanges[i].top <= viewTop + 5) active = _sectionRanges[i].anchor;
         else break;
     }
-    highlightSectionLink(active);
+    var link = highlightSectionLink(active);
+    // 滚动到某节时，自动展开该节下的子节
+    if (link) {
+        var row = link.parentNode;
+        if (row && row.classList.contains('sec-row')) {
+            var kids = row.nextElementSibling;
+            if (kids && kids.classList.contains('sec-kids') && kids.classList.contains('collapsed')) {
+                toggleSecKids(kids, row.querySelector('.sec-toggle'));
+            }
+        }
+    }
 }
 
 mainEl.addEventListener('scroll', function() {
