@@ -7,9 +7,12 @@
     <style>
         body { margin:0; padding:0; display:flex; height:100vh; overflow:hidden; font-family:Georgia,serif; background:#fff; }
 
-        #sidebar { width:280px; background:#f8f9fa; border-right:1px solid #e9ecef; overflow-y:auto; padding:16px 12px; flex-shrink:0; transition:margin-left .25s,opacity .25s; }
-        #sidebar.hidden { margin-left:-280px; opacity:0; pointer-events:none; }
-        .nav-home { display:block; margin-bottom:12px; color:#3498db; text-decoration:none; font-family:-apple-system,sans-serif; font-size:.85em; }
+        #topbar { position:fixed; top:0; left:0; z-index:100; display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:10px; padding:0 12px; height:44px; width:280px; box-sizing:border-box; background:#f8f9fa; }
+        #topbar.collapsed { flex-direction:column; align-items:flex-start; justify-content:flex-start; gap:6px; padding:8px 12px; height:auto; width:auto; background:#fff; }
+
+        #sidebar { width:280px; min-width:0; background:#f8f9fa; border-right:1px solid #e9ecef; overflow-y:auto; padding:56px 12px 16px; flex-shrink:0; transition:width .25s,padding .25s,border-right-width .25s,opacity .25s; }
+        #sidebar.collapsed { width:0; padding-left:0; padding-right:0; border-right-width:0; overflow:hidden; opacity:0; pointer-events:none; }
+        .nav-home { display:block; color:#3498db; text-decoration:none; font-family:-apple-system,sans-serif; font-size:.85em; white-space:nowrap; }
         .panel-header { font-family:-apple-system,sans-serif; font-size:.8em; font-weight:bold; color:#868e96; letter-spacing:.5px; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #dee2e6; }
 
         /* ── 章 ── */
@@ -25,29 +28,31 @@
         .ch-toggle.open i { background:#3498db; }
 
         /* ── 节框 ── */
-        .section-box { border:1px solid #e9ecef; border-radius:6px; background:#fbfcfd; padding:4px 6px; margin:4px 0 8px 12px; overflow:hidden; transition:max-height .2s,opacity .15s,padding .2s,margin .2s; }
+        .section-box { border:1px solid #e9ecef; border-radius:6px; background:#fbfcfd; padding:4px 6px; margin:4px 0 8px 0; overflow:hidden; transition:max-height .2s,opacity .15s,padding .2s,margin .2s; }
         .section-box.collapsed { max-height:0!important; opacity:0; padding-top:0; padding-bottom:0; margin-top:0; margin-bottom:0; border-width:0; }
         .sec-link { display:block; text-decoration:none; color:#4a5568; font-size:.85em; padding:4px 8px; border-radius:3px; line-height:1.35; font-family:-apple-system,sans-serif; cursor:pointer; }
         .sec-link:hover { background:rgba(0,0,0,.03); color:#2d3748; }
         .sec-link.active { color:#1a202c; font-weight:600; background:rgba(0,0,0,.045); }
-        .sec-link.d1 { padding-left:8px; }
-        .sec-link.d2 { padding-left:22px; font-size:.82em; }
-        .sec-link.d3 { padding-left:36px; font-size:.79em; }
+        .sec-link.d1 { padding-left:2px; }
+        .sec-link.d2 { padding-left:4px; font-size:.82em; }
+        .sec-link.d3 { padding-left:6px; font-size:.79em; }
+        .sec-link.d4 { padding-left:10px; font-size:.76em; }
 
         /* ── 节内子级折叠 ── */
         .sec-row { display:flex; align-items:center; }
-        .sec-toggle { width:48px; height:28px; flex-shrink:0; cursor:pointer; user-select:none; opacity:.35; transition:opacity .15s,transform .15s; font-size:18px; line-height:28px; text-align:center; margin-right:2px; }
+        .sec-toggle { width:20px; height:28px; flex-shrink:0; cursor:pointer; user-select:none; opacity:.35; transition:opacity .15s,transform .15s; font-size:18px; display:flex; align-items:center; justify-content:center; margin-right:2px; }
         .sec-toggle:hover { opacity:.7; }
         .sec-toggle.open { transform:rotate(90deg); }
         .sec-kids { overflow:hidden; transition:max-height .2s,opacity .15s; }
         .sec-kids.collapsed { max-height:0!important; opacity:0; }
-        /* 层级缩进 */
-        .sec-row.d1 { padding-left:4px; }
-        .sec-row.d2 { padding-left:18px; }
+        /* 层级缩进：一级节标题与章标题对齐，每深一层缩进一个字符 */
+        .sec-row.d1 { padding-left:8px; }
+        .sec-row.d2 { padding-left:20px; }
         .sec-row.d3 { padding-left:32px; }
-        .sec-row.d4 { padding-left:46px; }
+        .sec-row.d4 { padding-left:42px; }
 
-        #main { flex-grow:1; overflow-y:auto; position:relative; scroll-behavior:smooth; }
+        #main { flex-grow:1; overflow-y:auto; position:relative; scroll-behavior:smooth; transition:margin-left .25s; }
+        #main.collapsed { margin-left:76px; }  /* 收起时给左上角“书库/目录”按钮让位，避免遮挡扉页 */
         #chapter-view { max-width:700px; margin:0 auto; padding:40px 40px 120px; }
         .ch-title-bar { font-family:-apple-system,sans-serif; font-size:1.6em; font-weight:bold; color:#1a1a2e; padding:16px 0 12px; margin-bottom:20px; border-bottom:2px solid #3498db; position:sticky; top:0; background:linear-gradient(180deg,#fff 70%,rgba(255,255,255,0)); z-index:10; backdrop-filter:blur(4px); }
         .ch-content { line-height:1.8; font-size:1.15em; color:#212529; }
@@ -55,12 +60,14 @@
         .ch-content img { max-width:100%; height:auto; display:block; margin:20px auto; }
         .ch-content h1,.ch-content h2,.ch-content h3 { font-family:-apple-system,sans-serif; margin-top:1.5em; color:#333; scroll-margin-top:80px; }
         .ch-content span[id] { scroll-margin-top:100px; }
+        .ch-content a { color:#2d6cdf; text-decoration:none; cursor:pointer; }
+        .ch-content a:hover { text-decoration:underline; }
 
         #ch-loading { text-align:center; padding:60px; display:none; }
         #ch-loading .spinner { display:inline-block; width:28px; height:28px; border:3px solid #e9ecef; border-top-color:#3498db; border-radius:50%; animation:spin .6s linear infinite; }
         @keyframes spin { to{transform:rotate(360deg)} }
 
-        #sidebar-toggle { position:fixed; top:16px; right:24px; z-index:100; width:36px; height:36px; border:1px solid #dee2e6; border-radius:6px; background:#fff; cursor:pointer; font-size:18px; line-height:34px; text-align:center; color:#495057; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+        #sidebar-toggle { width:28px; height:28px; flex-shrink:0; border:1px solid #dee2e6; border-radius:6px; background:#fff; cursor:pointer; font-size:16px; line-height:26px; text-align:center; color:#495057; box-shadow:0 1px 4px rgba(0,0,0,.06); padding:0; }
         #sidebar-toggle:hover { background:#f1f3f5; }
 
         #ch-nav { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:16px; background:rgba(255,255,255,.95); border:1px solid #dee2e6; border-radius:24px; padding:8px 20px; box-shadow:0 2px 12px rgba(0,0,0,.06); z-index:20; font-family:-apple-system,sans-serif; font-size:.9em; }
@@ -71,13 +78,15 @@
 </head>
 <body>
 
-<div id="sidebar">
+<div id="topbar">
     <a href="/" class="nav-home">&larr; 书库</a>
+    <button id="sidebar-toggle" onclick="toggleSidebar()" title="目录">&#9776;</button>
+</div>
+
+<div id="sidebar">
     <div class="panel-header">目 录</div>
     <div id="toc-tree"></div>
 </div>
-
-<button id="sidebar-toggle" onclick="toggleSidebar()" title="目录">&#9776;</button>
 
 <div id="main">
     <div id="chapter-view">
@@ -106,6 +115,7 @@ var currentChapter = {{ chapter_idx }};
 }{% if not loop.last %},{% endif %}{% endfor %}]
 {% endmacro %}
 var tocTree = {{ toc_json(heading_toc) }};
+var anchorMap = {{ anchor_map | tojson }};  // anchor id → 章节索引（正文内超链接跳转）
 
 var mainEl = document.getElementById('main');
 
@@ -129,7 +139,7 @@ function buildChapter(ch, idx) {
     var toggle = document.createElement('span');
     toggle.className = 'ch-toggle';
     toggle.style.visibility = hasKids ? 'visible' : 'hidden';
-    toggle.onclick = function(e) { e.stopPropagation(); toggleSectionBox(box, toggle); };
+    toggle.onclick = function(e) { e.stopPropagation(); box._userToggled = true; toggleCollapse(box, toggle); };
     // 四个小方块
     for (var s = 0; s < 4; s++) { var sq = document.createElement('i'); toggle.appendChild(sq); }
     row.appendChild(toggle);
@@ -200,7 +210,7 @@ function buildSections(children, container, chapterIdx, depth, parentEl) {
             var kids = document.createElement('div');
             kids.className = 'sec-kids collapsed';
             stoggle.onclick = function(kd, tg) {
-                return function(e) { e.stopPropagation(); toggleSecKids(kd, tg); };
+                return function(e) { e.stopPropagation(); kd._userToggled = true; toggleCollapse(kd, tg); };
             }(kids, stoggle);
             buildSections(s.children, kids, chapterIdx, depth + 1, link);
             container.appendChild(kids);
@@ -208,45 +218,36 @@ function buildSections(children, container, chapterIdx, depth, parentEl) {
     }
 }
 
-function toggleSecKids(kids, toggle) {
-    if (kids.classList.contains('collapsed')) {
-        kids.classList.remove('collapsed');
-        kids.style.maxHeight = kids.scrollHeight + 'px';
-        toggle.classList.add('open');
-        setTimeout(function() { kids.style.maxHeight = ''; }, 50);
-    } else {
-        kids.style.maxHeight = kids.scrollHeight + 'px';
-        void kids.offsetHeight;
-        kids.classList.add('collapsed');
-        toggle.classList.remove('open');
-    }
-}
-
-function toggleSectionBox(box, toggle) {
-    if (!box) return;
-    if (box.classList.contains('collapsed')) {
-        box.classList.remove('collapsed');
-        box.style.maxHeight = box.scrollHeight + 'px';
+// ── 折叠/展开通用助手（章节框与子节容器共用）──
+function toggleCollapse(el, toggle) {
+    if (!el) return;
+    if (el.classList.contains('collapsed')) {
+        el.classList.remove('collapsed');
+        el.style.maxHeight = el.scrollHeight + 'px';
         if (toggle) toggle.classList.add('open');
-        setTimeout(function() { box.style.maxHeight = ''; }, 50);
+        setTimeout(function() { el.style.maxHeight = ''; }, 50);
     } else {
-        box.style.maxHeight = box.scrollHeight + 'px';
-        void box.offsetHeight;
-        box.classList.add('collapsed');
+        el.style.maxHeight = el.scrollHeight + 'px';
+        void el.offsetHeight;
+        el.classList.add('collapsed');
         if (toggle) toggle.classList.remove('open');
     }
 }
 
 buildToc();
 
+// 侧栏章列表（静态，一次性查询缓存）
+var tocItems = document.querySelectorAll('#toc-tree > .ch-item');
+
 // ── 展开当前章 ──
 function expandCurrentChapter(idx) {
-    var items = document.querySelectorAll('#toc-tree > .ch-item');
+    var items = tocItems;
     items.forEach(function(div, i) {
         var link = div.querySelector('.ch-link');
         if (link) link.classList.toggle('active', i === idx);
         var box = div._sectionBox;
         var isCurrent = (i === idx);
+        // 只展开当前章，不动其他章（避免点击其他章的节时误折叠已展开的章）
         if (box && isCurrent) {
             box.classList.remove('collapsed');
             box.style.maxHeight = '';
@@ -275,6 +276,9 @@ function highlightSectionLink(anchor) {
 // ── 预计算锚点位置，滚动时纯数组查找 ──
 var _highlightSuppress = false;
 var _sectionRanges = [];
+var _autoCollapseArmed = false;  // 仅用户滚动后才启用自动折叠（避免翻章瞬间误折叠）
+var _suppressCollapseOnce = false;  // 点击跳转产生的滚动不触发自动折叠（避免折叠跳转前所在的节）
+var _suppressTimer = null;  // 跳转标志兜底清除定时器
 
 function getBarH() {
     var bar = document.getElementById('ch-title');
@@ -289,34 +293,82 @@ function computeRanges() {
     for (var i = 0; i < links.length; i++) {
         var anchor = links[i].getAttribute('data-anchor');
         var el = document.getElementById(anchor);
-        if (el) _sectionRanges.push({ anchor: anchor, top: el.getBoundingClientRect().top - mt + mainEl.scrollTop });
+        if (!el) continue;
+        _sectionRanges.push({ anchor: anchor, top: el.getBoundingClientRect().top - mt + mainEl.scrollTop });
     }
     _sectionRanges.sort(function(a, b) { return a.top - b.top; });
 }
 
-function updateHighlight() {
-    if (_sectionRanges.length === 0) return;
+function updateHighlight(skipCollapse) {
     var viewTop = mainEl.scrollTop + getBarH();
-    var active = null;
-    for (var i = 0; i < _sectionRanges.length; i++) {
-        if (_sectionRanges[i].top <= viewTop + 5) active = _sectionRanges[i].anchor;
-        else break;
+    var link = null;
+    if (_sectionRanges.length > 0) {
+        var active = null;
+        for (var i = 0; i < _sectionRanges.length; i++) {
+            if (_sectionRanges[i].top <= viewTop + 5) active = _sectionRanges[i].anchor;
+            else break;
+        }
+        link = highlightSectionLink(active);
     }
-    var link = highlightSectionLink(active);
-    // 滚动到某节时，自动展开该节下的子节
-    if (link) {
-        var row = link.parentNode;
+    // 展开 active 祖先链 +（armed 且非点击跳转时）滚离即收
+    autoCollapseLeaving(link, _autoCollapseArmed && !skipCollapse);
+}
+
+// ── 滚离即收：向上/向下滚离某章/某节，即折叠其标题 ──
+// 归属规则：
+//   - 章（大）：#toc-tree > .ch-item，拥有其 .section-box 节框
+//   - 节（小）：任意深度的 .sec-link，其直接子节在紧随的 .sec-kids 中，
+//     父节通过 _parentSection 链向上追溯
+//   - 保持展开的集合 = 当前 active 节 + 其所有祖先节 + 所在的章框
+//   - 其余（已滚离的）仅在 doCollapse（armed 且非跳转）时收起；手动展开的除外
+function autoCollapseLeaving(activeLink, doCollapse) {
+    // 归属：active 节所在的章；尚未滚到任何节标题时取当前章
+    var activeCh = activeLink ? activeLink.closest('.ch-item') : tocItems[currentChapter];
+    // 保留展开的节容器 = active 自身及其祖先的直接子节容器
+    var keepKids = new Set();
+    for (var cur = activeLink; cur && cur.classList.contains('sec-link'); cur = cur._parentSection) {
+        var row = cur.parentNode;
         if (row && row.classList.contains('sec-row')) {
             var kids = row.nextElementSibling;
-            if (kids && kids.classList.contains('sec-kids') && kids.classList.contains('collapsed')) {
-                toggleSecKids(kids, row.querySelector('.sec-toggle'));
-            }
+            if (kids && kids.classList.contains('sec-kids')) keepKids.add(kids);
         }
+    }
+    // 1) 章框：只保留 active 所在章的节框；doCollapse 时收起其他章（滚离该章即收）
+    tocItems.forEach(function(div) {
+        var box = div._sectionBox;
+        if (!box) return;
+        var keep = (div === activeCh);
+        if (keep) {
+            if (box.classList.contains('collapsed') && !box._userToggled) toggleCollapse(box, div._toggle);
+        } else if (doCollapse && !box.classList.contains('collapsed') && !box._userToggled) {
+            // 收起章框时同步收起其内部所有节容器（回来时是干净结构）
+            box.querySelectorAll('.sec-kids').forEach(function(k) {
+                if (!k.classList.contains('collapsed') && !k._userToggled) {
+                    var tg = k.previousElementSibling ? k.previousElementSibling.querySelector('.sec-toggle') : null;
+                    toggleCollapse(k, tg);
+                }
+            });
+            toggleCollapse(box, div._toggle);
+        }
+    });
+    // 2) 节容器：active 所在章内 —— 保留 keepKids，其余仅 doCollapse 时收起
+    if (activeCh) {
+        activeCh.querySelectorAll('.sec-kids').forEach(function(k) {
+            var tg = k.previousElementSibling ? k.previousElementSibling.querySelector('.sec-toggle') : null;
+            if (keepKids.has(k)) {
+                if (k.classList.contains('collapsed') && !k._userToggled) toggleCollapse(k, tg);
+            } else if (doCollapse && !k.classList.contains('collapsed') && !k._userToggled) {
+                toggleCollapse(k, tg);
+            }
+        });
     }
 }
 
 mainEl.addEventListener('scroll', function() {
-    if (!_highlightSuppress) updateHighlight();
+    var jump = _suppressCollapseOnce;  // 点击跳转产生的滚动不启用自动折叠
+    _suppressCollapseOnce = false;
+    if (!jump) _autoCollapseArmed = true;  // 用户真实滚动后才允许自动折叠
+    if (!_highlightSuppress) updateHighlight(jump);
 }, { passive: true });
 
 // resize debounce
@@ -331,6 +383,9 @@ function scrollToSection(anchor) {
     if (!el) return;
     var mt = mainEl.getBoundingClientRect().top;
     mainEl.style.scrollBehavior = 'auto';
+    _suppressCollapseOnce = true;  // 本次跳转产生的滚动不触发自动折叠
+    clearTimeout(_suppressTimer);
+    _suppressTimer = setTimeout(function() { _suppressCollapseOnce = false; }, 500);  // 兜底：无实际滚动时清除标志
     mainEl.scrollTop = Math.max(0, el.getBoundingClientRect().top - mt + mainEl.scrollTop - getBarH());
     requestAnimationFrame(function() { mainEl.style.scrollBehavior = 'smooth'; });
 }
@@ -361,6 +416,7 @@ async function loadChapter(idx, scrollTo, anchor) {
         document.getElementById('ch-content').innerHTML = data.html;
         // 等浏览器完成布局后再计算锚点位置
         requestAnimationFrame(function() {
+            _autoCollapseArmed = false;  // 加载瞬间不自动折叠
             computeRanges();
             updateHighlight();
         });
@@ -387,6 +443,7 @@ function updateNavLabel() {
 expandCurrentChapter(currentChapter);
 updateNavLabel();
 requestAnimationFrame(function() {
+    _autoCollapseArmed = false;  // 首次加载不自动折叠
     computeRanges();
     updateHighlight();
 });
@@ -403,8 +460,47 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'ArrowLeft'  || e.key === 'PageUp')   goChapter(-1);
 });
 
+// ── 正文内超链接跳转（原阅读器里的标题/脚注等跳转）──
+document.getElementById('ch-content').addEventListener('click', function(e) {
+    var a = e.target.closest ? e.target.closest('a[href]') : null;
+    if (!a) return;
+    var href = a.getAttribute('href') || '';
+    // 外部链接/空链接/协议链接放行（交给浏览器默认行为）
+    if (!href || href === '#' || /^(https?:)?\/\/|^(mailto|data|javascript):/i.test(href)) return;
+    e.preventDefault();
+
+    var hashIdx = href.indexOf('#');
+    var filePart = hashIdx >= 0 ? href.slice(0, hashIdx) : href;
+    var anchor = hashIdx >= 0 ? href.slice(hashIdx + 1) : '';
+    try { filePart = decodeURIComponent(filePart); anchor = decodeURIComponent(anchor); } catch (err) {}
+
+    // 1) 锚点在当前章内容里 → 直接滚动定位
+    if (anchor && document.getElementById(anchor)) {
+        scrollToSection(anchor);
+        return;
+    }
+    // 2) 跨章锚点 → 用锚点映射找到目标章并跳转
+    if (anchor && anchorMap && anchorMap[anchor] !== undefined) {
+        loadChapter(anchorMap[anchor], 'top', anchor);
+        return;
+    }
+    // 3) 只有文件没有锚点 → 尝试跳转到该文件对应的章
+    if (filePart) {
+        var base = filePart.split('/').pop();
+        for (var i = 0; i < tocTree.length; i++) {
+            var fh = (tocTree[i].href || '').split('#')[0];
+            if (fh === filePart || fh.split('/').pop() === base) {
+                loadChapter(i, 'top');
+                return;
+            }
+        }
+    }
+});
+
 function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('hidden');
+    document.getElementById('sidebar').classList.toggle('collapsed');
+    document.getElementById('topbar').classList.toggle('collapsed');
+    document.getElementById('main').classList.toggle('collapsed');
 }
 </script>
 </body>

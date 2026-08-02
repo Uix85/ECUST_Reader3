@@ -3,12 +3,13 @@ Parses an EPUB file into a structured object that can be used to serve the book 
 """
 
 import os
+import re
+import json
 import shutil
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional
 from datetime import datetime
 from urllib.parse import unquote
-import re
 
 import ebooklib
 from ebooklib import epub
@@ -69,11 +70,6 @@ class Book:
 
 # --- Utilities ---
 
-# ═══════════════════════════════════════════
-# 基础工具函数
-# ═══════════════════════════════════════════
-
-# ── HTML 清理 ──
 def clean_html_content(soup: BeautifulSoup) -> BeautifulSoup:
     """【HTML清理】移除 script/style/iframe/nav/form 等无关标签"""
 
@@ -92,53 +88,99 @@ def clean_html_content(soup: BeautifulSoup) -> BeautifulSoup:
     return soup
 
 
-# ── 纯文本提取 ──
-def extract_plain_text(soup: BeautifulSoup) -> str:
-    """【纯文本提取】从 BeautifulSoup 对象提取纯文本"""
-    text = soup.get_text(separator=' ')
-    # Collapse whitespace
-    return ' '.join(text.split())
+# ── 图片统一处理（封面/占位图）──
+
+_placeholder_cache: Dict[str, bool] = {}
 
 
-# ── NCX 目录递归解析 ──
+def _is_placeholder_image(img_path: str, blank_ratio: float = 0.95, tol: int = 25) -> bool:
+    """【占位图检测】判断图片是否为空白占位图（绝大多数像素与主色接近时视为占位）"""
+    if img_path in _placeholder_cache:
+        return _placeholder_cache[img_path]
+    result = False
+    try:
+        from PIL import Image
+        from collections import Counter
+        with Image.open(img_path) as im:
+            im = im.convert('RGB').resize((50, 50))
+            pixels = list(im.getdata())
+            top_color = Counter(pixels).most_common(1)[0][0]
+            near = sum(1 for p in pixels if all(abs(p[i] - top_color[i]) <= tol for i in range(3)))
+            result = (near / len(pixels)) >= blank_ratio
+    except Exception:
+        result = False
+    _placeholder_cache[img_path] = result
+    return result
+
+
+def _filter_placeholder_images(html: str, images_dir: str) -> str:
+    """【图片统一处理】统一 <img>/<image> 标签：
+    原文件有封面图片则正常展示（<image> 修正为 <img>），
+    图片缺失或为空白占位图则移除不展示。"""
+    soup = BeautifulSoup(html, 'html.parser')
+    tags = soup.find_all(['img', 'image'])
+    if not tags:
+        return html
+    changed = False
+    for tag in tags:
+        src = tag.get('src') or tag.get('xlink:href') or tag.get('href')
+        if not src:
+            tag.decompose()
+            changed = True
+            continue
+        fname = os.path.basename(unquote(src))
+        local_path = os.path.join(images_dir, fname)
+        if not os.path.exists(local_path) or _is_placeholder_image(local_path):
+            # 图片文件缺失或为空白占位图 → 不展示
+            tag.decompose()
+            changed = True
+            continue
+        # 正常图片：统一为 <img src="images/文件名">
+        rel = 'images/' + fname
+        if tag.name != 'img':
+            tag.name = 'img'
+            tag['src'] = rel
+            for attr in ('xlink:href', 'href'):
+                if attr in tag.attrs:
+                    del tag.attrs[attr]
+            changed = True
+        elif tag.get('src') != rel:
+            tag['src'] = rel
+            changed = True
+
+    # 封面页常被包在 <svg width="100%" height="100%"> 里，会产生巨大空白 → 解包 <svg>
+    for svg in soup.find_all('svg'):
+        if svg.find(['img', 'image']):
+            svg.replace_with(*svg.contents)
+            changed = True
+
+    return str(soup) if changed else html
+
+
 def parse_toc_recursive(toc_list, depth=0) -> List[TOCEntry]:
     """【NCX目录解析】递归解析 EPUB 原始 NCX 目录为 TOCEntry 树"""
-    result = []
+    def _mk(href: str, title: str) -> TOCEntry:
+        return TOCEntry(
+            title=title,
+            href=href,
+            file_href=href.split('#')[0],
+            anchor=href.split('#')[1] if '#' in href else "",
+        )
 
+    result = []
     for item in toc_list:
         # ebooklib TOC items are either `Link` objects or tuples (Section, [Children])
         if isinstance(item, tuple):
             section, children = item
-            entry = TOCEntry(
-                title=section.title,
-                href=section.href,
-                file_href=section.href.split('#')[0],
-                anchor=section.href.split('#')[1] if '#' in section.href else "",
-                children=parse_toc_recursive(children, depth + 1)
-            )
+            entry = _mk(section.href, section.title)
+            entry.children = parse_toc_recursive(children, depth + 1)
             result.append(entry)
-        elif isinstance(item, epub.Link):
-            entry = TOCEntry(
-                title=item.title,
-                href=item.href,
-                file_href=item.href.split('#')[0],
-                anchor=item.href.split('#')[1] if '#' in item.href else ""
-            )
-            result.append(entry)
-        # Note: ebooklib sometimes returns direct Section objects without children
-        elif isinstance(item, epub.Section):
-             entry = TOCEntry(
-                title=item.title,
-                href=item.href,
-                file_href=item.href.split('#')[0],
-                anchor=item.href.split('#')[1] if '#' in item.href else ""
-            )
-             result.append(entry)
+        elif isinstance(item, (epub.Link, epub.Section)):
+            result.append(_mk(item.href, item.title))
 
     return result
 
 
-# ── 兜底目录（NCX 为空时）──
 def get_fallback_toc(book_obj) -> List[TOCEntry]:
     """【兜底目录】当 NCX 为空时，从 Spine 构建平坦目录"""
     toc = []
@@ -151,7 +193,6 @@ def get_fallback_toc(book_obj) -> List[TOCEntry]:
     return toc
 
 
-# ── 元数据提取 ──
 def extract_metadata_robust(book_obj) -> BookMetadata:
     """【元数据提取】健壮地提取 EPUB 元数据（标题、作者、语言等）"""
     def get_list(key):
@@ -208,11 +249,6 @@ _HEADING_PATTERNS = [
 ]
 
 
-# ═══════════════════════════════════════════
-# 标题检测系统
-# ═══════════════════════════════════════════
-
-# ── 层级判定（1=章 2=节 3=小节...）──
 def _determine_level(text: str) -> int:
     """【层级判定】根据标题文本模式判断层级（1=章,2=节,5=数字子节等）"""
     # Strip enclosing brackets before pattern matching
@@ -245,7 +281,6 @@ def _determine_level(text: str) -> int:
     return 2
 
 
-# ── 标题评分（≥30 为候选标题）──
 def _score_heading_candidate(text: str) -> int:
     """【标题评分】评估一段文本是否为标题（0=非标题，越高越像）"""
     if len(text) < 2 or len(text) > 80:
@@ -303,10 +338,20 @@ def _score_heading_candidate(text: str) -> int:
     return score
 
 
-# ── 文本标题检测（方法 A/B/C/D 四轮）──
 def _detect_headings_from_text(soup, chapter_href: str, book_title: str = '') -> list:
     """【文本标题检测】从纯文本 EPUB 中检测标题（方法A/B/C/D四轮）"""
     headings = []
+    hkey = re.sub(r'[^a-zA-Z0-9]', '', chapter_href)[-8:]
+
+    def _add(level, title, anchor, score):
+        headings.append({
+            'level': level,
+            'title': title,
+            'anchor': anchor,
+            'score': score,
+            'chapter_order': 0,
+            'chapter_href': chapter_href,
+        })
     
     # Method A: Split by <br> (typical for TXT-converted content)
     html_str = str(soup)
@@ -324,16 +369,7 @@ def _detect_headings_from_text(soup, chapter_href: str, book_title: str = '') ->
             seen_texts.add(text)
             # Determine level based on patterns
             level = _determine_level(text)
-            
-            hid = f"txt-hdr-{re.sub(r'[^a-zA-Z0-9]', '', chapter_href)[-8:]}-{idx}"
-            headings.append({
-                'level': level,
-                'title': text,
-                'anchor': hid,
-                'score': score,
-                'chapter_order': 0,
-                'chapter_href': chapter_href,
-            })
+            _add(level, text, f"txt-hdr-{hkey}-{idx}", score)
     
     # Method B: For each chapter, also try to extract a clean heading from the start
     full_text = soup.get_text()
@@ -349,15 +385,7 @@ def _detect_headings_from_text(soup, chapter_href: str, book_title: str = '') ->
                     score = _score_heading_candidate(cleaned)
                     if score >= 20:
                         seen_texts.add(cleaned)
-                        hid = f"txt-hdr-start-{re.sub(r'[^a-zA-Z0-9]', '', chapter_href)[-8:]}"
-                        headings.append({
-                            'level': 1,
-                            'title': cleaned,
-                            'anchor': hid,
-                            'score': score,
-                            'chapter_order': 0,
-                            'chapter_href': chapter_href,
-                        })
+                        _add(1, cleaned, f"txt-hdr-start-{hkey}", score)
             break
     
     # Method C: Scan full continuous text for numbered sub-heading patterns
@@ -409,15 +437,7 @@ def _detect_headings_from_text(soup, chapter_href: str, book_title: str = '') ->
             score = _score_heading_candidate(line)
             if score >= 30:
                 seen_texts.add(line)
-                hid = f"txt-hdr-full-{re.sub(r'[^a-zA-Z0-9]', '', chapter_href)[-8:]}-{idx}"
-                headings.append({
-                    'level': sub_lvl,
-                    'title': line,
-                    'anchor': hid,
-                    'score': score,
-                    'chapter_order': 0,
-                    'chapter_href': chapter_href,
-                })
+                _add(sub_lvl, line, f"txt-hdr-full-{hkey}-{idx}", score)
     
     # Method D: Scan segments for inline sub-heading patterns
     # (e.g. "江村经济1．调查区域的界定" embedded at end of body text)
@@ -445,15 +465,7 @@ def _detect_headings_from_text(soup, chapter_href: str, book_title: str = '') ->
                 if score >= 30:
                     seen_texts.add(full_title)
                     # Reproducible anchor from title text (not position-based)
-                    hid = 'hdr-inline-' + re.sub(r'[^a-zA-Z0-9\u4e00-\u9fff]', '', full_title)[:30]
-                    headings.append({
-                        'level': 5,
-                        'title': full_title,
-                        'anchor': hid,
-                        'score': score,
-                        'chapter_order': 0,
-                        'chapter_href': chapter_href,
-                    })
+                    _add(5, full_title, 'hdr-inline-' + re.sub(r'[^a-zA-Z0-9\u4e00-\u9fff]', '', full_title)[:30], score)
     
     # Sort by original position (not score) to preserve document order
     for i, h in enumerate(headings):
@@ -463,7 +475,6 @@ def _detect_headings_from_text(soup, chapter_href: str, book_title: str = '') ->
     return headings
 
 
-# ── 标题清洗（截断正文后缀、去括号噪音）──
 def _clean_title(title: str, max_len: int = 100) -> str:
     """【标题清洗】截断正文后缀、去除括号噪音、限制长度"""
     title = title.strip()
@@ -514,7 +525,6 @@ def _clean_title(title: str, max_len: int = 100) -> str:
     return title.strip()
 
 
-# ── 目录条目递归清洗 ──
 def _clean_toc_entries(entries: list, depth: int = 0, filter_depth0: bool = True) -> list:
     """【目录清洗】递归清洗 TOC 条目，过滤非标题条目"""
     cleaned = []
@@ -541,11 +551,6 @@ def _clean_toc_entries(entries: list, depth: int = 0, filter_depth0: bool = True
     return cleaned
 
 
-# ═══════════════════════════════════════════
-# 锚点注入 & 标题目录构建
-# ═══════════════════════════════════════════
-
-# ── 为章节 HTML 注入标题锚点 id ──
 def inject_heading_ids(chapter: ChapterContent, book_title: str = '') -> str:
     """【锚点注入】为章节内的标题标签注入 id 属性（方法1:HTML标签 方法2:文本检测 方法3:内联）"""
     soup = BeautifulSoup(chapter.content, 'html.parser')
@@ -554,9 +559,9 @@ def inject_heading_ids(chapter: ChapterContent, book_title: str = '') -> str:
     # Method 1: Inject IDs for <h1>-<h6> tags
     heading_tags = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
     for idx, tag in enumerate(heading_tags):
-        # 总是重写 ID，确保统一 HTML 中锚点全局唯一（calibre 的 calibre_pb_N 会跨文件重复）
-        tag['id'] = f"hdr-{chapter.order}-{idx}"
-        modified = True
+        if not tag.get('id'):
+            tag['id'] = f"hdr-{chapter.order}-{idx}"
+            modified = True
 
     # Method 2: If no heading tags, inject anchors for text-detected headings
     if not heading_tags:
@@ -608,7 +613,6 @@ def inject_heading_ids(chapter: ChapterContent, book_title: str = '') -> str:
     return str(soup) if modified else chapter.content
 
 
-# ── 子标题挂载（检测并挂载到父级 NCX 条目）──
 def _attach_sub_headings(toc_entries: List[TOCEntry], book: Book) -> List[TOCEntry]:
     """【子标题挂载】检测章节内的子标题并挂载到父级 TOC 条目下"""
     def _titles_are_similar(a: str, b: str) -> bool:
@@ -709,7 +713,6 @@ def _attach_sub_headings(toc_entries: List[TOCEntry], book: Book) -> List[TOCEnt
     return toc_entries
 
 
-# ── 标题目录构建（入口：HTML标签 → 文本检测+NCX → 纯文本 → 兜底）──
 def build_heading_based_toc(book: Book) -> List[TOCEntry]:
     """【标题目录构建】构建完整层级目录——优先 HTML 标签，回退到文本检测+NCX"""
     all_headings: List[dict] = []
@@ -726,7 +729,7 @@ def build_heading_based_toc(book: Book) -> List[TOCEntry]:
                 text = tag.get_text(strip=True)
                 if not text:
                     continue
-                hid = f"hdr-{ch.order}-{idx}"
+                hid = tag.get('id') or f"hdr-{ch.order}-{idx}"
                 all_headings.append({
                     'level': level,
                     'title': text,
@@ -801,42 +804,6 @@ def build_heading_based_toc(book: Book) -> List[TOCEntry]:
     return cleaned_original if cleaned_original else _headings_to_tree(text_headings, use_levels=False)
 
 
-# ── NCX-HTML 锚点匹配（标准化模糊匹配）──
-def _match_ncx_to_html(ncx_entries: List[TOCEntry], html_by_file: Dict[str, List[dict]]):
-    """【NCX-HTML锚点匹配】将 HTML 标题的锚点 id 复制到匹配的 NCX 条目上"""
-    def _normalize(s: str) -> str:
-        """【文本标准化】去除标点和空格用于模糊匹配"""
-        return re.sub(r'[\s\u3000·•\-—―,，.。;；:：!！?？"\'\"\'「」『』【】《》（）()\[\]]+', '', s.lower())
-    
-    def _walk(entries):
-        for e in entries:
-            if e.file_href in html_by_file:
-                candidates = html_by_file[e.file_href]
-                e_norm = _normalize(e.title)
-                best = None
-                best_score = 0
-                for h in candidates:
-                    h_norm = _normalize(h['title'])
-                    # Exact match after normalization
-                    if e_norm == h_norm:
-                        best = h
-                        break
-                    # Partial match: one contains the other
-                    if len(e_norm) >= 3 and len(h_norm) >= 3:
-                        if e_norm in h_norm or h_norm in e_norm:
-                            score = min(len(e_norm), len(h_norm)) / max(len(e_norm), len(h_norm))
-                            if score > best_score:
-                                best_score = score
-                                best = h
-                if best:
-                    e.anchor = best['anchor']
-            if e.children:
-                _walk(e.children)
-    
-    _walk(ncx_entries)
-
-
-# ── 标题树构建（扁平列表 → 嵌套 TOCEntry 树）──
 def _headings_to_tree(headings: List[dict], use_levels: bool = True) -> List[TOCEntry]:
     """【标题树构建】将扁平的标题 dict 列表转换为嵌套的 TOCEntry 树"""
     if not use_levels:
@@ -876,11 +843,6 @@ def _headings_to_tree(headings: List[dict], use_levels: bool = True) -> List[TOC
 
 # --- SQLite processing ---
 
-# ═══════════════════════════════════════════
-# SQLite 处理
-# ═══════════════════════════════════════════
-
-# ── 段落拆分（策略: <p> → <br> → \u3000\u3000）──
 def _split_paragraphs(html: str) -> list:
     """【段落拆分】将章节 HTML 拆分为段落列表（策略: <p> → <br> → \u3000\u3000）"""
     soup = BeautifulSoup(html, 'html.parser')
@@ -962,7 +924,6 @@ def _split_paragraphs(html: str) -> list:
     return result
 
 
-# ── EPUB 处理入库（入口）──
 def process_epub_to_sqlite(epub_path: str, books_dir: str = "books") -> str:
     """【EPUB处理入库】将 EPUB 解析后写入 SQLite 数据库，返回输出目录路径"""
     from schema import get_db
@@ -981,19 +942,13 @@ def process_epub_to_sqlite(epub_path: str, books_dir: str = "books") -> str:
         shutil.rmtree(out_dir)
     os.makedirs(images_dir, exist_ok=True)
     
-    # 3. Extract images
+    # 3. Extract images（src 重写统一由 _filter_placeholder_images 处理）
     print("Extracting images...")
-    image_map = {}
     for item in book_obj.get_items():
         if item.get_type() == ebooklib.ITEM_IMAGE:
-            original_fname = os.path.basename(item.get_name())
-            safe_fname = "".join(c for c in original_fname if c.isalnum() or c in '._-').strip()
-            local_path = os.path.join(images_dir, safe_fname)
-            with open(local_path, 'wb') as f:
+            safe_fname = "".join(c for c in os.path.basename(item.get_name()) if c.isalnum() or c in '._-').strip()
+            with open(os.path.join(images_dir, safe_fname), 'wb') as f:
                 f.write(item.get_content())
-            rel_path = f"images/{safe_fname}"
-            image_map[item.get_name()] = rel_path
-            image_map[original_fname] = rel_path
     
     # 4. Parse TOC
     print("Parsing Table of Contents...")
@@ -1001,14 +956,7 @@ def process_epub_to_sqlite(epub_path: str, books_dir: str = "books") -> str:
     if not toc_structure:
         print("Warning: Empty TOC, building fallback from Spine...")
         toc_structure = get_fallback_toc(book_obj)
-    
-    import json as _json
-    toc_json = _json.dumps([{
-        'title': e.title, 'href': e.href, 'file_href': e.file_href,
-        'anchor': e.anchor, 'children': _json.loads(toc_json) if False else []
-    } for e in toc_structure], ensure_ascii=False)
-    # (simplified - full TOC stored as JSON string)
-    
+
     # 5. Open DB
     db_path = os.path.join(out_dir, 'book.db')
     db = get_db(db_path)
@@ -1018,7 +966,7 @@ def process_epub_to_sqlite(epub_path: str, books_dir: str = "books") -> str:
     db.execute(
         "INSERT INTO books (title, language, authors, source_file, processed_at, total_chaps, toc_json) "
         "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (metadata.title, metadata.language, _json.dumps(metadata.authors, ensure_ascii=False),
+        (metadata.title, metadata.language, json.dumps(metadata.authors, ensure_ascii=False),
          os.path.basename(epub_path), now, 0, '[]')
     )
     book_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
@@ -1035,19 +983,7 @@ def process_epub_to_sqlite(epub_path: str, books_dir: str = "books") -> str:
         
         raw_content = item.get_content().decode('utf-8', errors='ignore')
         soup = BeautifulSoup(raw_content, 'html.parser')
-        
-        # Fix images
-        for img in soup.find_all('img'):
-            src = img.get('src', '')
-            if not src:
-                continue
-            src_decoded = unquote(src)
-            filename = os.path.basename(src_decoded)
-            if src_decoded in image_map:
-                img['src'] = image_map[src_decoded]
-            elif filename in image_map:
-                img['src'] = image_map[filename]
-        
+
         # Clean HTML
         soup = clean_html_content(soup)
         
@@ -1057,7 +993,10 @@ def process_epub_to_sqlite(epub_path: str, books_dir: str = "books") -> str:
             final_html = "".join(str(x) for x in body.contents)
         else:
             final_html = str(soup)
-        
+
+        # 统一图片处理：修正 <image> 标签、移除缺失/空白占位图
+        final_html = _filter_placeholder_images(final_html, images_dir)
+
         full_text = soup.get_text()
         full_text_clean = ' '.join(full_text.split())
         
@@ -1075,7 +1014,7 @@ def process_epub_to_sqlite(epub_path: str, books_dir: str = "books") -> str:
             h_tags = soup_h.find_all(['h1','h2','h3','h4','h5','h6'])
             if h_tags:
                 htree = [{'level': int(h.name[1]), 'text': h.get_text(strip=True)} for h in h_tags]
-                heading_json = _json.dumps(htree, ensure_ascii=False)
+                heading_json = json.dumps(htree, ensure_ascii=False)
         except:
             pass
         
@@ -1115,7 +1054,6 @@ def process_epub_to_sqlite(epub_path: str, books_dir: str = "books") -> str:
 
 # --- CLI ---
 
-# ── 命令行入口 ──
 if __name__ == "__main__":
 
     import sys

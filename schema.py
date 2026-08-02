@@ -1,7 +1,9 @@
 """
-SQLite schema and connection management for the four-layer cognitive reading system.
+SQLite schema and connection management for the reader.
 
 Database file: books/{book_folder}/book.db
+基础数据表：books / chapters / paragraphs（正文 + 段落）
+预留层级表：book_layer / chapter_layer / semantic_layer / concept_layer（仅骨架，字段待定）
 """
 
 import sqlite3
@@ -58,71 +60,44 @@ CREATE TABLE IF NOT EXISTS paragraphs (
 CREATE INDEX IF NOT EXISTS idx_paras_chapter ON paragraphs(chapter_id, seq);
 CREATE INDEX IF NOT EXISTS idx_paras_book    ON paragraphs(book_id);
 
--- 4. book_overviews (全书层)
-CREATE TABLE IF NOT EXISTS book_overviews (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    book_id         INTEGER NOT NULL UNIQUE REFERENCES books(id),
-    core_question   TEXT,
-    theme_framework TEXT,
-    argument_logic  TEXT,
-    generated_at    TEXT,
-    model_version   TEXT,
-    is_verified     INTEGER DEFAULT 0
+-- 4. book_layer (全书层·预留)
+CREATE TABLE IF NOT EXISTS book_layer (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id INTEGER NOT NULL UNIQUE REFERENCES books(id)
 );
 
--- 5. chapter_analyses (章节层)
-CREATE TABLE IF NOT EXISTS chapter_analyses (
-    id               INTEGER PRIMARY KEY AUTOINCREMENT,
-    chapter_id       INTEGER NOT NULL UNIQUE REFERENCES chapters(id),
-    book_id          INTEGER NOT NULL REFERENCES books(id),
-    position_in_book TEXT,
-    argument_steps   TEXT,
-    key_turnings     TEXT,
-    generated_at     TEXT,
-    model_version    TEXT,
-    is_verified      INTEGER DEFAULT 0
+-- 5. chapter_layer (章节层·预留)
+CREATE TABLE IF NOT EXISTS chapter_layer (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    chapter_id INTEGER NOT NULL UNIQUE REFERENCES chapters(id),
+    book_id    INTEGER NOT NULL REFERENCES books(id)
 );
-CREATE INDEX IF NOT EXISTS idx_ch_analyses_book ON chapter_analyses(book_id);
+CREATE INDEX IF NOT EXISTS idx_ch_layer_book ON chapter_layer(book_id);
 
--- 6. semantic_annotations (语义层)
-CREATE TABLE IF NOT EXISTS semantic_annotations (
-    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
-    paragraph_id       INTEGER NOT NULL UNIQUE REFERENCES paragraphs(id),
-    chapter_id         INTEGER NOT NULL REFERENCES chapters(id),
-    book_id            INTEGER NOT NULL REFERENCES books(id),
-    key_points         TEXT,
-    paraphrase         TEXT,
-    sentence_relations TEXT,
-    generated_at       TEXT,
-    model_version      TEXT,
-    is_verified        INTEGER DEFAULT 0
+-- 6. semantic_layer (语义层/段落层·预留)
+CREATE TABLE IF NOT EXISTS semantic_layer (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    paragraph_id INTEGER NOT NULL UNIQUE REFERENCES paragraphs(id),
+    chapter_id   INTEGER NOT NULL REFERENCES chapters(id),
+    book_id      INTEGER NOT NULL REFERENCES books(id)
 );
-CREATE INDEX IF NOT EXISTS idx_semantic_chapter ON semantic_annotations(chapter_id);
-CREATE INDEX IF NOT EXISTS idx_semantic_book    ON semantic_annotations(book_id);
+CREATE INDEX IF NOT EXISTS idx_semantic_layer_chapter ON semantic_layer(chapter_id);
+CREATE INDEX IF NOT EXISTS idx_semantic_layer_book    ON semantic_layer(book_id);
 
--- 7. concepts (概念层)
-CREATE TABLE IF NOT EXISTS concepts (
-    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-    book_id             INTEGER NOT NULL REFERENCES books(id),
-    name                TEXT    NOT NULL,
-    academic_definition TEXT,
-    common_vs_academic  TEXT,
-    relations_json      TEXT,
-    generated_at        TEXT,
-    model_version       TEXT,
-    is_verified         INTEGER DEFAULT 0,
+-- 7. concept_layer (概念层·预留)
+CREATE TABLE IF NOT EXISTS concept_layer (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id INTEGER NOT NULL REFERENCES books(id),
+    name    TEXT    NOT NULL,   -- 概念名称（基本身份）
     UNIQUE(book_id, name)
 );
-CREATE INDEX IF NOT EXISTS idx_concepts_book ON concepts(book_id);
+CREATE INDEX IF NOT EXISTS idx_concept_layer_book ON concept_layer(book_id);
 
--- 8. concept_occurrences (概念→段落)
+-- 8. concept_occurrences (概念→段落·预留)
 CREATE TABLE IF NOT EXISTS concept_occurrences (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    concept_id    INTEGER NOT NULL REFERENCES concepts(id),
-    paragraph_id  INTEGER NOT NULL REFERENCES paragraphs(id),
-    span_text     TEXT,
-    span_start    INTEGER,
-    span_end      INTEGER
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    concept_id   INTEGER NOT NULL REFERENCES concept_layer(id),
+    paragraph_id INTEGER NOT NULL REFERENCES paragraphs(id)
 );
 CREATE INDEX IF NOT EXISTS idx_co_concept   ON concept_occurrences(concept_id);
 CREATE INDEX IF NOT EXISTS idx_co_paragraph ON concept_occurrences(paragraph_id);
