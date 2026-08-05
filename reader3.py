@@ -491,7 +491,7 @@ def _clean_title(title: str, max_len: int = 100) -> str:
     # e.g. "第五章　理性的确定性与真理性　导言" → split into two parts
     # Only splits when "导言" is in the latter half of the title
     for sep_suffix in [('\u3000导言', 3), ('\u3000引言', 3), (' 导言', 3), (' 引言', 3)]:
-        sep, word_len = sep_suffix
+        sep, _ = sep_suffix
         idx = title.rfind(sep)
         if idx > len(title) // 2 and idx > 3:
             before = title[:idx].strip()
@@ -750,7 +750,7 @@ def build_heading_based_toc(book: Book) -> List[TOCEntry]:
         by_file: Dict[str, List[dict]] = {}
         for h in all_headings:
             by_file.setdefault(h['chapter_href'], []).append(h)
-        for fh, headings in by_file.items():
+        for _, headings in by_file.items():
             if len(headings) <= 1:
                 continue
             first_level = headings[0]['level']
@@ -976,7 +976,7 @@ def process_epub_to_sqlite(epub_path: str, books_dir: str = "books") -> str:
     total_paras = 0
     
     for i, spine_item in enumerate(book_obj.spine):
-        item_id, linear = spine_item
+        item_id, _ = spine_item
         item = book_obj.get_item_with_id(item_id)
         if not item or item.get_type() != ebooklib.ITEM_DOCUMENT:
             continue

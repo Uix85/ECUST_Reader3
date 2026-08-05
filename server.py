@@ -154,8 +154,7 @@ def _build_chapters(toc_pages: List[dict]) -> List[dict]:
 # ── 章切片锚点计算 ──
 
 def _chapter_slice_anchors(chapters: List[dict], toc_pages: List[dict],
-                           book: Book, book_id: str, chapter_idx: int,
-                           images_dir: str):
+                           book: Book, book_id: str, chapter_idx: int):
     """返回第 idx 章的切片 (start_anchor, end_anchor)。
 
     优先用章标题锚点；若为空（NCX 条目），用 spine 文件边界字节偏移做精确切片。
@@ -219,14 +218,14 @@ def _get_anchor_chapter_map(book_id: str, book: Book) -> Dict[str, int]:
     # 第一遍：收集全书所有 id → 首次出现的章节
     id_to_ch: Dict[str, int] = {}
     for ci, ch in enumerate(chapters):
-        start_a, end_a = _chapter_slice_anchors(chapters, toc_pages, book, book_id, ci, images_dir)
+        start_a, end_a = _chapter_slice_anchors(chapters, toc_pages, book, book_id, ci)
         html = _slice_content(unified, start_a, end_a)
         for mid in re.findall(r'id="([^"]+)"', html):
             id_to_ch.setdefault(mid, ci)
 
     # 第二遍：只保留正文内 <a href="...#anchor"> 引用的锚点
     targets: set = set()
-    for _path, anch in re.findall(r'''href=["']([^"']*)#([^"']+)["']''', unified):
+    for _, anch in re.findall(r'''href=["']([^"']*)#([^"']+)["']''', unified):
         try:
             anch = unquote(anch)
         except Exception:
@@ -428,7 +427,6 @@ async def library_view(request: Request):
 
                     # 计算 TOC 页数（标题目录中的条目数）
                     try:
-                        heading_toc = _get_heading_toc(item, book)
                         toc_pages = _get_toc_pages(item, book)
                         page_count = len(toc_pages)
                     except Exception:
@@ -513,7 +511,7 @@ def _get_chapter_slice(book_id: str, book: Book, chapter_idx: int):
     ch = chapters[chapter_idx]
     unified = _get_unified_html_cached(book_id, book)
     images_dir = os.path.join(BOOKS_DIR, book_id, 'images')
-    start_anchor, end_anchor = _chapter_slice_anchors(chapters, toc_pages, book, book_id, chapter_idx, images_dir)
+    start_anchor, end_anchor = _chapter_slice_anchors(chapters, toc_pages, book, book_id, chapter_idx)
     html = _slice_content(unified, start_anchor, end_anchor)
     return chapters, ch, html
 

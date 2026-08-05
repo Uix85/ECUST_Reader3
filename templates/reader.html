@@ -7,11 +7,19 @@
     <style>
         body { margin:0; padding:0; display:flex; height:100vh; overflow:hidden; font-family:Georgia,serif; background:#fff; }
 
-        #topbar { position:fixed; top:0; left:0; z-index:100; display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:10px; padding:0 12px; height:44px; width:280px; box-sizing:border-box; background:#f8f9fa; }
-        #topbar.collapsed { flex-direction:column; align-items:flex-start; justify-content:flex-start; gap:6px; padding:8px 12px; height:auto; width:auto; background:#fff; }
+        #side-wrap { position:relative; display:flex; flex-direction:column; flex-shrink:0; width:280px; min-width:0; transition:width .25s; }
+        #side-wrap.collapsed { width:76px; }
+        #side-wrap.collapsed #sidebar,
+        #side-wrap.collapsed #resizer { display:none; }
 
-        #sidebar { width:280px; min-width:0; background:#f8f9fa; border-right:1px solid #e9ecef; overflow-y:auto; padding:56px 12px 16px; flex-shrink:0; transition:width .25s,padding .25s,border-right-width .25s,opacity .25s; }
-        #sidebar.collapsed { width:0; padding-left:0; padding-right:0; border-right-width:0; overflow:hidden; opacity:0; pointer-events:none; }
+        #topbar { display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:10px; padding:0 12px; height:44px; box-sizing:border-box; background:#f8f9fa; border-bottom:1px solid #e9ecef; }
+        #topbar.collapsed { flex-direction:column; align-items:flex-start; justify-content:flex-start; gap:6px; padding:8px 10px; height:auto; border-bottom:none; background:#fff; }
+
+        #sidebar { flex-grow:1; min-width:0; background:#f8f9fa; border-right:1px solid #e9ecef; overflow-y:auto; padding:12px 12px 16px; }
+
+        /* 侧栏右缘拖拽调宽 */
+        #resizer { position:absolute; top:0; right:-3px; width:6px; height:100%; cursor:col-resize; z-index:120; transition:background .15s; }
+        #resizer:hover { background:rgba(52,152,219,.25); }
         .nav-home { display:block; color:#3498db; text-decoration:none; font-family:-apple-system,sans-serif; font-size:.85em; white-space:nowrap; }
         .panel-header { font-family:-apple-system,sans-serif; font-size:.8em; font-weight:bold; color:#868e96; letter-spacing:.5px; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #dee2e6; }
 
@@ -30,7 +38,7 @@
         /* ── 节框 ── */
         .section-box { border:1px solid #e9ecef; border-radius:6px; background:#fbfcfd; padding:4px 6px; margin:4px 0 8px 0; overflow:hidden; transition:max-height .2s,opacity .15s,padding .2s,margin .2s; }
         .section-box.collapsed { max-height:0!important; opacity:0; padding-top:0; padding-bottom:0; margin-top:0; margin-bottom:0; border-width:0; }
-        .sec-link { display:block; text-decoration:none; color:#4a5568; font-size:.85em; padding:4px 8px; border-radius:3px; line-height:1.35; font-family:-apple-system,sans-serif; cursor:pointer; }
+        .sec-link { display:block; flex:1; min-width:0; text-decoration:none; color:#4a5568; font-size:.85em; padding:4px 8px; border-radius:3px; line-height:1.35; font-family:-apple-system,sans-serif; cursor:pointer; }
         .sec-link:hover { background:rgba(0,0,0,.03); color:#2d3748; }
         .sec-link.active { color:#1a202c; font-weight:600; background:rgba(0,0,0,.045); }
         .sec-link.d1 { padding-left:2px; }
@@ -45,14 +53,18 @@
         .sec-toggle.open { transform:rotate(90deg); }
         .sec-kids { overflow:hidden; transition:max-height .2s,opacity .15s; }
         .sec-kids.collapsed { max-height:0!important; opacity:0; }
+        /* 章/节统一：右侧上锁图标（灰色图钉，Edge 风格） */
+        .lock-icon { margin-left:auto; cursor:pointer; display:flex; align-items:center; justify-content:center; width:18px; height:18px; opacity:.3; user-select:none; flex-shrink:0; color:#6c757d; }
+        .lock-icon svg { width:13px; height:13px; fill:currentColor; }
+        .lock-icon:hover { opacity:.85; }
+        .lock-icon.locked { opacity:1; }
         /* 层级缩进：一级节标题与章标题对齐，每深一层缩进一个字符 */
         .sec-row.d1 { padding-left:8px; }
         .sec-row.d2 { padding-left:20px; }
         .sec-row.d3 { padding-left:32px; }
         .sec-row.d4 { padding-left:42px; }
 
-        #main { flex-grow:1; overflow-y:auto; position:relative; scroll-behavior:smooth; transition:margin-left .25s; }
-        #main.collapsed { margin-left:76px; }  /* 收起时给左上角“书库/目录”按钮让位，避免遮挡扉页 */
+        #main { flex-grow:1; min-width:0; overflow-y:auto; position:relative; scroll-behavior:smooth; }
         #chapter-view { max-width:700px; margin:0 auto; padding:40px 40px 120px; }
         .ch-title-bar { font-family:-apple-system,sans-serif; font-size:1.6em; font-weight:bold; color:#1a1a2e; padding:16px 0 12px; margin-bottom:20px; border-bottom:2px solid #3498db; position:sticky; top:0; background:linear-gradient(180deg,#fff 70%,rgba(255,255,255,0)); z-index:10; backdrop-filter:blur(4px); }
         .ch-content { line-height:1.8; font-size:1.15em; color:#212529; }
@@ -78,14 +90,16 @@
 </head>
 <body>
 
-<div id="topbar">
-    <a href="/" class="nav-home">&larr; 书库</a>
-    <button id="sidebar-toggle" onclick="toggleSidebar()" title="目录">&#9776;</button>
-</div>
-
-<div id="sidebar">
-    <div class="panel-header">目 录</div>
-    <div id="toc-tree"></div>
+<div id="side-wrap">
+    <div id="topbar">
+        <a href="/" class="nav-home">&larr; 书库</a>
+        <button id="sidebar-toggle" onclick="toggleSidebar()" title="目录">&#9776;</button>
+    </div>
+    <div id="sidebar">
+        <div class="panel-header">目 录</div>
+        <div id="toc-tree"></div>
+    </div>
+    <div id="resizer" title="拖动调整目录宽度"></div>
 </div>
 
 <div id="main">
@@ -132,14 +146,19 @@ function buildChapter(ch, idx) {
     var div = document.createElement('div');
     div.className = 'ch-item';
 
+    var hasKids = ch.children && ch.children.length > 0;
+
+    // 节框先建（折叠/上锁统一引用）
+    var box = document.createElement('div');
+    box.className = 'section-box';
+
     var row = document.createElement('div');
     row.className = 'ch-row';
-    var hasKids = ch.children && ch.children.length > 0;
 
     var toggle = document.createElement('span');
     toggle.className = 'ch-toggle';
     toggle.style.visibility = hasKids ? 'visible' : 'hidden';
-    toggle.onclick = function(e) { e.stopPropagation(); box._userToggled = true; toggleCollapse(box, toggle); };
+    toggle.onclick = makeFoldHandler(box, toggle);
     // 四个小方块
     for (var s = 0; s < 4; s++) { var sq = document.createElement('i'); toggle.appendChild(sq); }
     row.appendChild(toggle);
@@ -148,18 +167,18 @@ function buildChapter(ch, idx) {
     link.className = 'ch-link';
     link.textContent = ch.title;
     link.href = '#';
-    link.onclick = function(e) { e.preventDefault(); loadChapter(idx); };
     row.appendChild(link);
     div.appendChild(row);
 
     // 节框
-    var box = document.createElement('div');
-    box.className = 'section-box';
     if (hasKids) {
         box.classList.add('collapsed');
         buildSections(ch.children, box, idx, 1, null);
+        addLockIcon(row, box, toggle);   // 统一：右侧上锁图标
+        setupLinkInteractions(link, function() { loadChapter(idx); }, box);  // 有子节：双击=上锁
     } else {
         box.style.display = 'none';
+        setupLinkInteractions(link, function() { loadChapter(idx); }, null);  // 无子节：直接跳转
     }
     div.appendChild(box);
     // 存引用用于折叠
@@ -189,31 +208,30 @@ function buildSections(children, container, chapterIdx, depth, parentEl) {
         link.className = 'sec-link d' + depth;
         link.textContent = s.title;
         link.href = '#';
-        var anchor = (s.href || '').split('#')[1] || '';
+        let anchor = (s.href || '').split('#')[1] || '';   // let：块级作用域，闭包各自捕获
         link.setAttribute('data-anchor', anchor);
         link._parentSection = parentEl;
-        link.onclick = function(anch, chIdx) {
-            return function(e) {
-                e.preventDefault();
-                if (currentChapter !== chIdx) {
-                    loadChapter(chIdx, 'top', anch);
-                } else {
-                    scrollToSection(anch);
-                }
-            };
-        }(anchor, chapterIdx);
+        let doSectionNav = function() {
+            if (currentChapter !== chapterIdx) {
+                loadChapter(chapterIdx, 'top', anchor);
+            } else {
+                scrollToSection(anchor);
+            }
+        };
         row.appendChild(link);
         container.appendChild(row);
 
         // 子节容器（默认折叠）
         if (hasKids) {
-            var kids = document.createElement('div');
+            let kids = document.createElement('div');   // let：块级作用域，闭包各自捕获
             kids.className = 'sec-kids collapsed';
-            stoggle.onclick = function(kd, tg) {
-                return function(e) { e.stopPropagation(); kd._userToggled = true; toggleCollapse(kd, tg); };
-            }(kids, stoggle);
+            stoggle.onclick = makeFoldHandler(kids, stoggle);
+            addLockIcon(row, kids, stoggle);   // 统一：右侧上锁图标
+            setupLinkInteractions(link, doSectionNav, kids);  // 有子节：双击=上锁
             buildSections(s.children, kids, chapterIdx, depth + 1, link);
             container.appendChild(kids);
+        } else {
+            setupLinkInteractions(link, doSectionNav, null);  // 无子节：直接跳转
         }
     }
 }
@@ -234,12 +252,97 @@ function toggleCollapse(el, toggle) {
     }
 }
 
+// ── 章/节统一的折叠 + 上锁逻辑（章节框 .section-box 与节容器 .sec-kids 共用）──
+// 折叠键：展开 → 默认上锁（固定展开，不被自动折叠）；折叠 → 默认解锁（回归初始状态）
+function makeFoldHandler(el, toggle) {
+    return function(e) {
+        e.stopPropagation();
+        if (!el) return;
+        el._locked = el.classList.contains('collapsed');
+        toggleCollapse(el, toggle);
+        updateLockIcon(el);
+    };
+}
+
+// 上锁图标：灰色图钉（Edge 锁定标签页风格），内嵌 SVG
+// 锁定 = 实心图钉；未锁定 = 空心图钉
+var LOCK_ICON_PIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16,9V4h1c0.55,0 1,-0.45 1,-1v0c0,-0.55 -0.45,-1 -1,-1H7C6.45,2 6,2.45 6,3v0c0,0.55 0.45,1 1,1h1v5c0,1.66 -1.34,3 -3,3v2h5.97v7l1,1l1,-1v-7H19v-2C17.34,12 16,10.66 16,9z"/></svg>';
+var LOCK_ICON_UNPIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16,9V4h1c0.55,0 1,-0.45 1,-1v0c0,-0.55 -0.45,-1 -1,-1H7C6.45,2 6,2.45 6,3v0c0,0.55 0.45,1 1,1h1v5c0,1.66 -1.34,3 -3,3v2h5.97v7l1,1l1,-1v-7H19v-2C17.34,12 16,10.66 16,9z M14.83,4H9.17v4.37c0,1.32 -0.83,2.42 -2,2.83V13h9.66v-1.8C16.66,10.79 15.83,9.69 15.83,8.37V4z"/></svg>';
+
+function updateLockIcon(el) {
+    var icon = el._lockEl;
+    if (!icon) return;
+    icon.innerHTML = el._locked ? LOCK_ICON_PIN : LOCK_ICON_UNPIN;
+    icon.classList.toggle('locked', !!el._locked);
+}
+
+// 是否含上锁后代（上锁的节要求其祖先保持展开）
+function hasLockedDescendant(el) {
+    return !!el.querySelector('.lock-icon.locked');
+}
+
+function isInActiveChain(el) {
+    var active = document.querySelector('.sec-link.active');
+    var activeCh = active ? active.closest('.ch-item') : tocItems[currentChapter];
+    if (activeCh && activeCh._sectionBox === el) return true;
+    for (var cur = active; cur && cur.classList.contains('sec-link'); cur = cur._parentSection) {
+        if (getSecKids(cur) === el) return true;
+    }
+    return false;
+}
+
+// 双击标题 / 点击上锁图标：切换固定展开
+function toggleLock(el) {
+    el._locked = !el._locked;
+    if (el._locked) {
+        if (el.classList.contains('collapsed')) toggleCollapse(el, el._toggleEl);
+    } else if (!el.classList.contains('collapsed') && !isInActiveChain(el)) {
+        toggleCollapse(el, el._toggleEl);  // 解锁：不在当前阅读链则收起
+    }
+    updateLockIcon(el);
+}
+
+function addLockIcon(row, el, toggle) {
+    el._toggleEl = toggle;
+    var icon = document.createElement('span');
+    icon.className = 'lock-icon';
+    icon.title = '点击锁定/解锁（锁定后不会被自动折叠）';
+    icon.onclick = function(e) { e.stopPropagation(); toggleLock(el); };
+    row.appendChild(icon);
+    el._lockEl = icon;
+    updateLockIcon(el);
+}
+
+// 链接点击防误判：250ms 内第二次点击视为双击 → 取消跳转、只上锁
+function setupLinkInteractions(link, doNav, lockTarget) {
+    if (!lockTarget) {
+        link.addEventListener('click', function(e) {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            doNav();
+        });
+        return;
+    }
+    var timer = null;
+    link.addEventListener('click', function(e) {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        if (timer) { clearTimeout(timer); timer = null; return; }  // 双击第二击 → 取消跳转
+        timer = setTimeout(function() { timer = null; doNav(); }, 250);
+    });
+    link.addEventListener('dblclick', function(e) {
+        e.preventDefault();
+        if (timer) { clearTimeout(timer); timer = null; }
+        toggleLock(lockTarget);
+    });
+}
+
 buildToc();
 
 // 侧栏章列表（静态，一次性查询缓存）
 var tocItems = document.querySelectorAll('#toc-tree > .ch-item');
 
-// ── 展开当前章 ──
+// ── 展开当前章；跨章导航时收起其他章框（导航即离开）──
 function expandCurrentChapter(idx) {
     var items = tocItems;
     items.forEach(function(div, i) {
@@ -247,10 +350,14 @@ function expandCurrentChapter(idx) {
         if (link) link.classList.toggle('active', i === idx);
         var box = div._sectionBox;
         var isCurrent = (i === idx);
-        // 只展开当前章，不动其他章（避免点击其他章的节时误折叠已展开的章）
-        if (box && isCurrent) {
-            box.classList.remove('collapsed');
-            box.style.maxHeight = '';
+        if (box) {
+            if (isCurrent) {
+                // 展开当前章（手动折叠后回归初始，会重新展开）
+                if (box.classList.contains('collapsed')) toggleCollapse(box, div._toggle);
+            } else if (!box.classList.contains('collapsed') && !box._locked && !hasLockedDescendant(box)) {
+                // 导航到新章：收起其他章框；上锁的（或含上锁后代的）除外
+                toggleCollapse(box, div._toggle);
+            }
         }
         var tgl = div._toggle;
         if (tgl) {
@@ -299,6 +406,8 @@ function computeRanges() {
     _sectionRanges.sort(function(a, b) { return a.top - b.top; });
 }
 
+var _prevAnchor = null;  // 上一次 active 的节锚点（用于检测“离开某部分”）
+
 function updateHighlight(skipCollapse) {
     var viewTop = mainEl.scrollTop + getBarH();
     var link = null;
@@ -310,57 +419,64 @@ function updateHighlight(skipCollapse) {
         }
         link = highlightSectionLink(active);
     }
-    // 展开 active 祖先链 +（armed 且非点击跳转时）滚离即收
-    autoCollapseLeaving(link, _autoCollapseArmed && !skipCollapse);
+    // 检测式滚离即收：armed 且非跳转且 active 切换时，折叠“离开的部分”
+    if (_autoCollapseArmed && !skipCollapse) collapseLeaving(link);
+    // 始终展开当前 active 的祖先链（手动收起的除外）
+    expandActiveChain(link);
+    if (link) _prevAnchor = link.getAttribute('data-anchor');
 }
 
-// ── 滚离即收：向上/向下滚离某章/某节，即折叠其标题 ──
-// 归属规则：
-//   - 章（大）：#toc-tree > .ch-item，拥有其 .section-box 节框
-//   - 节（小）：任意深度的 .sec-link，其直接子节在紧随的 .sec-kids 中，
-//     父节通过 _parentSection 链向上追溯
-//   - 保持展开的集合 = 当前 active 节 + 其所有祖先节 + 所在的章框
-//   - 其余（已滚离的）仅在 doCollapse（armed 且非跳转）时收起；手动展开的除外
-function autoCollapseLeaving(activeLink, doCollapse) {
-    // 归属：active 节所在的章；尚未滚到任何节标题时取当前章
-    var activeCh = activeLink ? activeLink.closest('.ch-item') : tocItems[currentChapter];
-    // 保留展开的节容器 = active 自身及其祖先的直接子节容器
-    var keepKids = new Set();
-    for (var cur = activeLink; cur && cur.classList.contains('sec-link'); cur = cur._parentSection) {
-        var row = cur.parentNode;
-        if (row && row.classList.contains('sec-row')) {
-            var kids = row.nextElementSibling;
-            if (kids && kids.classList.contains('sec-kids')) keepKids.add(kids);
-        }
+function getSecKids(link) {
+    var row = link && link.parentNode;
+    if (row && row.classList.contains('sec-row')) {
+        var kids = row.nextElementSibling;
+        if (kids && kids.classList.contains('sec-kids')) return kids;
     }
-    // 1) 章框：只保留 active 所在章的节框；doCollapse 时收起其他章（滚离该章即收）
-    tocItems.forEach(function(div) {
-        var box = div._sectionBox;
-        if (!box) return;
-        var keep = (div === activeCh);
-        if (keep) {
-            if (box.classList.contains('collapsed') && !box._userToggled) toggleCollapse(box, div._toggle);
-        } else if (doCollapse && !box.classList.contains('collapsed') && !box._userToggled) {
-            // 收起章框时同步收起其内部所有节容器（回来时是干净结构）
-            box.querySelectorAll('.sec-kids').forEach(function(k) {
-                if (!k.classList.contains('collapsed') && !k._userToggled) {
-                    var tg = k.previousElementSibling ? k.previousElementSibling.querySelector('.sec-toggle') : null;
-                    toggleCollapse(k, tg);
-                }
-            });
-            toggleCollapse(box, div._toggle);
-        }
-    });
-    // 2) 节容器：active 所在章内 —— 保留 keepKids，其余仅 doCollapse 时收起
+    return null;
+}
+
+// ── 检测式“滚离即收” ──
+// 逻辑：仅当 active 从某部分切换到另一部分（进入上/下一部分）时，折叠“离开的部分”；
+// 未滚到的部分（前方）与未离开的部分一律不动。
+function collapseLeaving(activeLink) {
+    if (!activeLink || !_prevAnchor) return;
+    var curAnchor = activeLink.getAttribute('data-anchor');
+    if (curAnchor === _prevAnchor) return;          // active 未变
+    var prevLink = document.querySelector('.sec-link[data-anchor="' + CSS.escape(_prevAnchor) + '"]');
+    if (!prevLink) return;
+    if (prevLink.contains(activeLink)) return;      // 新旧同部分内加深 → 未离开
+    // 找“离开的部分”：公共祖先之下、旧分支的那一层（旧 active 自身或某祖先）
+    var chain = [];
+    for (var p = prevLink; p && p.classList.contains('sec-link'); p = p._parentSection) chain.push(p);
+    var left = prevLink;
+    for (var i = 0; i < chain.length; i++) {
+        if (chain[i].contains(activeLink)) break;   // 公共祖先（新 active 在其内）→ 停止
+        left = chain[i];                            // 尚未被新 active 覆盖 → 属于离开的部分
+    }
+    foldSubtree(left);
+}
+
+function foldSubtree(link) {
+    var kids = getSecKids(link);
+    // 上锁的（或含上锁后代的）不折叠
+    if (!kids || kids.classList.contains('collapsed') || kids._locked || hasLockedDescendant(kids)) return;
+    var tg = kids.previousElementSibling ? kids.previousElementSibling.querySelector('.sec-toggle') : null;
+    toggleCollapse(kids, tg);
+}
+
+// 展开 active 自身 + 祖先链的子节容器 + 所在章框
+function expandActiveChain(activeLink) {
+    var activeCh = activeLink ? activeLink.closest('.ch-item') : tocItems[currentChapter];
     if (activeCh) {
-        activeCh.querySelectorAll('.sec-kids').forEach(function(k) {
-            var tg = k.previousElementSibling ? k.previousElementSibling.querySelector('.sec-toggle') : null;
-            if (keepKids.has(k)) {
-                if (k.classList.contains('collapsed') && !k._userToggled) toggleCollapse(k, tg);
-            } else if (doCollapse && !k.classList.contains('collapsed') && !k._userToggled) {
-                toggleCollapse(k, tg);
-            }
-        });
+        var box = activeCh._sectionBox;
+        if (box && box.classList.contains('collapsed')) toggleCollapse(box, activeCh._toggle);
+    }
+    for (var cur = activeLink; cur && cur.classList.contains('sec-link'); cur = cur._parentSection) {
+        var kids = getSecKids(cur);
+        if (kids && kids.classList.contains('collapsed')) {
+            var tg = kids.previousElementSibling ? kids.previousElementSibling.querySelector('.sec-toggle') : null;
+            toggleCollapse(kids, tg);
+        }
     }
 }
 
@@ -417,6 +533,7 @@ async function loadChapter(idx, scrollTo, anchor) {
         // 等浏览器完成布局后再计算锚点位置
         requestAnimationFrame(function() {
             _autoCollapseArmed = false;  // 加载瞬间不自动折叠
+            _prevAnchor = null;  // 新章节重置“上一次 active”
             computeRanges();
             updateHighlight();
         });
@@ -439,7 +556,72 @@ function updateNavLabel() {
     document.getElementById('ch-nav-next').style.visibility = currentChapter < TOTAL - 1 ? 'visible' : 'hidden';
 }
 
+// ── 侧栏：折叠/展开 + 拖拽调宽 ──
+var sideWrap = document.getElementById('side-wrap');
+var SIDEBAR_MIN = 180;
+var SIDEBAR_KEY_W = 'reader_sidebar_w';
+var SIDEBAR_KEY_C = 'reader_sidebar_collapsed';
+
+function setSidebarWidth(w, animate) {
+    sideWrap.style.transition = animate ? '' : 'none';
+    sideWrap.style.width = w + 'px';
+}
+
+function toggleSidebar() {
+    var collapsed = sideWrap.classList.toggle('collapsed');
+    document.getElementById('topbar').classList.toggle('collapsed', collapsed);
+    if (collapsed) {
+        // 清除内联宽度，让 .collapsed 规则生效（收成 76px 竖条）
+        sideWrap.style.width = '';
+        sideWrap.style.transition = '';
+    } else {
+        var saved = parseInt(localStorage.getItem(SIDEBAR_KEY_W) || '280', 10);
+        setSidebarWidth(Math.max(SIDEBAR_MIN, saved), true);
+    }
+    localStorage.setItem(SIDEBAR_KEY_C, collapsed ? '1' : '0');
+    requestAnimationFrame(computeRanges);
+}
+
+// 拖拽右缘实时调宽（☰ 图标随栏宽实时跟随）
+(function initSidebarResize() {
+    var rs = document.getElementById('resizer');
+    var dragging = false, startX = 0, startW = 0;
+    rs.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        dragging = true; startX = e.clientX; startW = sideWrap.offsetWidth;
+        setSidebarWidth(startW, false);
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+    });
+    document.addEventListener('mousemove', function(e) {
+        if (!dragging) return;
+        var w = Math.max(SIDEBAR_MIN, Math.min(startW + e.clientX - startX, window.innerWidth - 160));
+        setSidebarWidth(w, false);
+    });
+    document.addEventListener('mouseup', function() {
+        if (!dragging) return;
+        dragging = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        localStorage.setItem(SIDEBAR_KEY_W, sideWrap.offsetWidth);
+        requestAnimationFrame(computeRanges);
+    });
+})();
+
 // ── 初始化 ──
+// 恢复侧栏状态（折叠与否 + 上次宽度）
+(function initSidebarState() {
+    var savedW = parseInt(localStorage.getItem(SIDEBAR_KEY_W) || '280', 10);
+    if (localStorage.getItem(SIDEBAR_KEY_C) === '1') {
+        sideWrap.classList.add('collapsed');
+        document.getElementById('topbar').classList.add('collapsed');
+        // 折叠时不能设内联宽度（会覆盖 .collapsed 的 76px）
+        sideWrap.style.width = '';
+    } else if (!isNaN(savedW) && savedW >= SIDEBAR_MIN) {
+        setSidebarWidth(savedW, false);
+    }
+})();
+
 expandCurrentChapter(currentChapter);
 updateNavLabel();
 requestAnimationFrame(function() {
@@ -497,11 +679,6 @@ document.getElementById('ch-content').addEventListener('click', function(e) {
     }
 });
 
-function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('collapsed');
-    document.getElementById('topbar').classList.toggle('collapsed');
-    document.getElementById('main').classList.toggle('collapsed');
-}
 </script>
 </body>
 </html>
