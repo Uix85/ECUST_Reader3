@@ -60,36 +60,47 @@ CREATE TABLE IF NOT EXISTS paragraphs (
 CREATE INDEX IF NOT EXISTS idx_paras_chapter ON paragraphs(chapter_id, seq);
 CREATE INDEX IF NOT EXISTS idx_paras_book    ON paragraphs(book_id);
 
--- 4. book_layer (全书层·预留)
+-- 4. book_layer (L1 全书层·键=book_id)
 CREATE TABLE IF NOT EXISTS book_layer (
-    id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    book_id INTEGER NOT NULL UNIQUE REFERENCES books(id)
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id       INTEGER NOT NULL UNIQUE REFERENCES books(id),
+    content       TEXT,             -- 分析结果（Markdown）
+    model_version TEXT,             -- 生成所用模型版本
+    updated_at    TEXT
 );
 
--- 5. chapter_layer (章节层·预留)
+-- 5. chapter_layer (L2 章节层·键=chapter_id)
 CREATE TABLE IF NOT EXISTS chapter_layer (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    chapter_id INTEGER NOT NULL UNIQUE REFERENCES chapters(id),
-    book_id    INTEGER NOT NULL REFERENCES books(id)
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    chapter_id    INTEGER NOT NULL UNIQUE REFERENCES chapters(id),
+    book_id       INTEGER NOT NULL REFERENCES books(id),
+    content       TEXT,
+    model_version TEXT,
+    updated_at    TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_ch_layer_book ON chapter_layer(book_id);
 
--- 6. semantic_layer (语义层/段落层·预留)
+-- 6. semantic_layer (L3 语义层·键=MD5(规范化选中文本))
 CREATE TABLE IF NOT EXISTS semantic_layer (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    paragraph_id INTEGER NOT NULL UNIQUE REFERENCES paragraphs(id),
-    chapter_id   INTEGER NOT NULL REFERENCES chapters(id),
-    book_id      INTEGER NOT NULL REFERENCES books(id)
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id       INTEGER NOT NULL REFERENCES books(id),
+    text_hash     TEXT    NOT NULL,
+    content       TEXT,
+    model_version TEXT,
+    updated_at    TEXT,
+    UNIQUE(book_id, text_hash)
 );
-CREATE INDEX IF NOT EXISTS idx_semantic_layer_chapter ON semantic_layer(chapter_id);
-CREATE INDEX IF NOT EXISTS idx_semantic_layer_book    ON semantic_layer(book_id);
+CREATE INDEX IF NOT EXISTS idx_semantic_layer_book ON semantic_layer(book_id);
 
--- 7. concept_layer (概念层·预留)
+-- 7. concept_layer (L4 概念层·键=规范化词条名)
 CREATE TABLE IF NOT EXISTS concept_layer (
-    id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    book_id INTEGER NOT NULL REFERENCES books(id),
-    name    TEXT    NOT NULL,   -- 概念名称（基本身份）
-    UNIQUE(book_id, name)
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id       INTEGER NOT NULL REFERENCES books(id),
+    term          TEXT    NOT NULL,
+    content       TEXT,
+    model_version TEXT,
+    updated_at    TEXT,
+    UNIQUE(book_id, term)
 );
 CREATE INDEX IF NOT EXISTS idx_concept_layer_book ON concept_layer(book_id);
 
