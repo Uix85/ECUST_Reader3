@@ -174,6 +174,32 @@ async def read_chapter(request: Request, book_id: str, chapter_idx: int):
         "anchor_map": _get_anchor_chapter_map(book_id, book),
     })
 
+# ── 笔记界面 GET /notes/{book_id} ──
+@app.get("/notes/{book_id}", response_class=HTMLResponse)
+async def notes_page(request: Request, book_id: str):
+    """【笔记界面】全书层（L1）+ 章节层（L2）专门页面；四角星入口跳转至此"""
+    book = load_book_cached(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    toc_pages = _get_toc_pages(book_id, book)
+    chapters = _build_chapters(toc_pages)
+    # 每逻辑章关联其起始页所在的 spine 文件（spine_order）作为章节层笔记键：
+    # 标题树逻辑章（阅读页 chapter_idx）与 spine 文件顺序可能不一致
+    # （TXT 转换的 EPUB 常把一章拆成多个碎片文件），读写都走同一映射保证一致。
+    chapter_list = []
+    for i, ch in enumerate(chapters):
+        sp = None
+        if 0 <= ch['start_page'] < len(toc_pages):
+            sp = toc_pages[ch['start_page']].get('spine_order')
+        chapter_list.append({"idx": i, "title": ch['title'], "spine_order": sp})
+
+    return templates.TemplateResponse(request, "notes.html", {
+        "book_id": book_id,
+        "book_title": book.metadata.title,
+        "chapters": chapter_list,
+    })
+
 # ── 整章 AJAX API GET /api/full_chapter/{book_id}/{chapter_idx} ──
 @app.get("/api/full_chapter/{book_id}/{chapter_idx}")
 async def api_full_chapter(book_id: str, chapter_idx: int):

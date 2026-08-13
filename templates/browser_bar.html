@@ -29,7 +29,7 @@
     <div class="bb-divider" id="bb-aux-divider" style="display:none;"></div>
     <button class="bb-item" id="bb-aux" style="display:none;">
         <span class="bb-ico">&#10022;</span>
-        <span class="bb-label">辅助阅读</span>
+        <span class="bb-label">笔记</span>
     </button>
 </div>
 
@@ -88,13 +88,12 @@
 
     document.getElementById('bb-home').addEventListener('click', function() { location.href = '/'; });
 
-    // 辅助阅读入口（仅在 reader 页显示）：点击切换辅助阅读页
+    // 笔记界面入口（仅在 reader 页显示）：点击跳转到该书笔记页（全书层/章节层）
     if (pageBookId) {
         document.getElementById('bb-aux').style.display = 'flex';
         document.getElementById('bb-aux-divider').style.display = 'block';
         document.getElementById('bb-aux').addEventListener('click', function() {
-            if (typeof toggleAuxPage === 'function') toggleAuxPage();
-            else { var tg = document.getElementById('aux-toggle'); if (tg) tg.click(); }
+            location.href = '/notes/' + encodeURIComponent(pageBookId);
         });
     }
     render();

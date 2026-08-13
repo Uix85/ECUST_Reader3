@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ book_title }} · 笔记</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f4f4f9; margin: 0; padding: 0; height: 100vh; overflow: hidden; }
+        .notes-wrap { position: fixed; left: 92px; top: 0; right: 0; bottom: 0; display: flex; flex-direction: column; }
+
+        /* 顶部标题栏 */
+        .header { display: flex; align-items: center; gap: 14px; padding: 16px 24px 12px; border-bottom: 2px solid #3498db; flex-shrink: 0; background: #fff; }
+        .header .back { color: #495057; text-decoration: none; font-size: .95em; white-space: nowrap; flex-shrink: 0; }
+        .header .back:hover { color: #3498db; }
+        .header h1 { flex: 1; margin: 0; font-size: 1.4em; color: #1a1a2e; word-break: break-all; }
+        .status { font-size: .85em; color: #868e96; min-height: 1em; }
+        .status.ok { color: #27ae60; }
+
+        /* 主区域：左层级导航 + 右层级内容 */
+        .main { flex: 1; display: flex; min-height: 0; }
+
+        /* 左侧层级导航 */
+        .level-nav { width: 190px; flex-shrink: 0; border-right: 1px solid #dee2e6; background: #fff; overflow-y: auto; padding: 10px 0; }
+        .nav-title { font-size: .78em; color: #adb5bd; padding: 4px 16px 8px; letter-spacing: .12em; }
+        .lv { display: flex; align-items: center; gap: 8px; width: 100%; border: none; background: none; cursor: pointer; padding: 11px 16px; font-family: inherit; font-size: .95em; color: #495057; text-align: left; }
+        .lv:hover { background: #f1f3f5; }
+        .lv.active { background: #e7f1fa; color: #1a5276; font-weight: 600; border-right: 3px solid #3498db; }
+        .lv .lv-name { flex: 1; }
+        .lv .lv-tag { font-size: .72em; color: #868e96; background: #eef3f7; border-radius: 4px; padding: 1px 6px; }
+        .lv.active .lv-tag { background: #d6e8f8; color: #1a5276; }
+
+        /* 层级内容区：每层独立滚动容器 */
+        .level-body { flex: 1; position: relative; min-width: 0; }
+        .lvl { position: absolute; inset: 0; overflow-y: auto; display: none; padding: 20px 28px 80px; box-sizing: border-box; }
+        .lvl.active { display: block; }
+
+        .lvl-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+        .lvl-title { flex: 1; font-size: 1.05em; font-weight: bold; color: #2b4a63; border-left: 3px solid #4da3d6; padding-left: 10px; }
+        .lvl-sub { font-weight: normal; color: #868e96; font-size: .85em; }
+
+        .btn { display: inline-flex; align-items: center; justify-content: center; background: #3498db; color: #fff; border: none; border-radius: 4px; padding: 6px 14px; font-size: .9em; cursor: pointer; text-decoration: none; }
+        .btn:hover { background: #2980b9; }
+        .btn.ghost { background: #f1f3f5; color: #495057; border: 1px solid #dee2e6; }
+        .btn.ghost:hover { background: #e9ecef; color: #212529; }
+        .btn:disabled { background: #95a5a6; cursor: not-allowed; }
+
+        /* 内容展示（Markdown 暂以纯文本呈现，保留换行） */
+        .content { font-size: .98em; line-height: 1.85; color: #212529; white-space: pre-wrap; word-break: break-word; background: #f8fbfd; border: 1px solid #eef3f7; border-radius: 8px; padding: 16px 18px; min-height: 60px; }
+        .content.empty, .lvl-empty { color: #adb5bd; font-size: .9em; }
+        .editor { display: none; width: 100%; box-sizing: border-box; min-height: 200px; padding: 12px 14px; font-family: inherit; font-size: .95em; line-height: 1.7; color: #212529; border: 1px solid #a5d8ff; border-radius: 8px; resize: vertical; outline: none; }
+        .editor:focus { border-color: #4da3d6; box-shadow: 0 0 0 3px rgba(77,163,214,.15); }
+        .edit-actions { display: none; gap: 10px; margin-top: 12px; }
+
+        /* 侧列表（章节层章列表 / 语义·概念词条列表共用） */
+        .ch-layout { display: flex; gap: 0; min-height: 420px; }
+        .ch-list { width: 250px; flex-shrink: 0; border-right: 1px solid #eef3f7; overflow-y: auto; max-height: 62vh; padding: 8px 0; }
+        .ch-item { display: flex; align-items: baseline; gap: 8px; width: 100%; text-align: left; border: none; background: none; cursor: pointer; padding: 9px 14px; font-family: inherit; font-size: .92em; color: #495057; word-break: break-all; }
+        .ch-item:hover { background: #f1f3f5; }
+        .ch-item.active { background: #e7f1fa; color: #1a5276; font-weight: 600; }
+        .ch-item .no { color: #adb5bd; font-size: .82em; flex-shrink: 0; min-width: 2em; }
+        .ch-item.active .no { color: #4da3d6; }
+        .ch-detail { flex: 1; min-width: 0; padding: 4px 20px; display: flex; flex-direction: column; gap: 12px; }
+        .ch-detail .ch-name { font-size: 1em; font-weight: bold; color: #2b4a63; word-break: break-all; }
+        .ch-detail .content { flex: 1; }
+        .lay-count { font-size: .8em; color: #868e96; background: #eef3f7; border-radius: 10px; padding: 2px 10px; }
+
+        /* 统一 Markdown 渲染内容 */
+        .content.md { white-space: normal; }
+        .md p { margin:.35em 0; }
+        .md h1, .md h2, .md h3, .md h4, .md h5, .md h6 { font-family: -apple-system, sans-serif; margin:.7em 0 .35em; color:#1a1a2e; }
+        .md h1 { font-size:1.3em; } .md h2 { font-size:1.15em; } .md h3 { font-size:1.05em; }
+        .md h4, .md h5, .md h6 { font-size:1em; }
+        .md ul, .md ol { margin:.35em 0; padding-left:1.4em; }
+        .md li { margin:.15em 0; }
+        .md code { background:#eef3f7; border-radius:3px; padding:0 3px; font-size:.92em; }
+        .md pre { background:#eef3f7; border-radius:6px; padding:10px 12px; overflow-x:auto; margin:.5em 0; }
+        .md pre code { background:none; padding:0; }
+        .md a { color:#2d6cdf; }
+        .md hr { border:none; border-top:1px solid #dee2e6; margin:.8em 0; }
+    </style>
+</head>
+<body>
+
+<script>window.BROWSER_BOOK_ID = {{ book_id | tojson }}; window.BROWSER_BOOK_TITLE = {{ book_title | tojson }};</script>
+{% include 'browser_bar.html' %}
+{% include 'markdown_render.js' %}
+
+<div class="notes-wrap">
+    <div class="header">
+        <a class="back" href="/read/{{ book_id }}/0">&larr; 返回阅读</a>
+        <h1>{{ book_title }}</h1>
+        <span class="status" id="page-status"></span>
+    </div>
+
+    <div class="main">
+        <!-- 左侧：四层级导航 -->
+        <nav class="level-nav">
+            <div class="nav-title">四层级</div>
+            <button class="lv active" data-level="L1" onclick="switchLevel('L1')"><span class="lv-name">全书层</span><span class="lv-tag">L1</span></button>
+            <button class="lv" data-level="L2" onclick="switchLevel('L2')"><span class="lv-name">章节层</span><span class="lv-tag">L2</span></button>
+            <button class="lv" data-level="L3" onclick="switchLevel('L3')"><span class="lv-name">语义层</span><span class="lv-tag">L3</span></button>
+            <button class="lv" data-level="L4" onclick="switchLevel('L4')"><span class="lv-name">概念层</span><span class="lv-tag">L4</span></button>
+        </nav>
+
+        <!-- 右侧：当前层级内容（每层独立滚动） -->
+        <div class="level-body">
+
+            <!-- L1 全书层 -->
+            <div class="lvl active" data-level="L1">
+                <div class="lvl-head">
+                    <div class="lvl-title">全书层（L1）<span class="lvl-sub">整本书的整体分析</span></div>
+                    <span class="status" id="nb-book-status"></span>
+                    <button class="btn ghost" id="nb-book-edit-btn">编辑</button>
+                </div>
+                <div class="content" id="nb-book-body"><span class="lvl-empty">加载中…</span></div>
+                <textarea class="editor" id="nb-book-editor" placeholder="在此编写全书层笔记…"></textarea>
+                <div class="edit-actions" id="nb-book-actions">
+                    <button class="btn" id="nb-book-save-btn">保存</button>
+                    <button class="btn ghost" id="nb-book-cancel-btn">取消</button>
+                </div>
+            </div>
+
+            <!-- L2 章节层 -->
+            <div class="lvl" data-level="L2">
+                <div class="lvl-head">
+                    <div class="lvl-title">章节层（L2）<span class="lvl-sub">逐章笔记，点击左侧章节查看</span></div>
+                    <span class="status" id="nb-ch-status"></span>
+                    <button class="btn ghost" id="nb-ch-edit-btn" disabled>编辑</button>
+                </div>
+                <div class="ch-layout">
+                    <div class="ch-list" id="nb-ch-list"></div>
+                    <div class="ch-detail">
+                        <div class="ch-name" id="nb-ch-name">请选择章节</div>
+                        <div class="content" id="nb-ch-body"><span class="lvl-empty">加载中…</span></div>
+                        <textarea class="editor" id="nb-ch-editor" placeholder="在此编写本章笔记…"></textarea>
+                        <div class="edit-actions" id="nb-ch-actions">
+                            <button class="btn" id="nb-ch-save-btn">保存</button>
+                            <button class="btn ghost" id="nb-ch-cancel-btn">取消</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- L3 语义层 -->
+            <div class="lvl" data-level="L3">
+                <div class="lvl-head">
+                    <div class="lvl-title">语义层（L3）<span class="lvl-sub">选中文本的解析记忆</span></div>
+                    <span class="lay-count" id="nb-sem-count"></span>
+                </div>
+                <div class="ch-layout">
+                    <div class="ch-list" id="nb-sem-list"><span class="lvl-empty">加载中…</span></div>
+                    <div class="ch-detail">
+                        <div class="ch-name" id="nb-sem-name">请选择条目</div>
+                        <div class="content md" id="nb-sem-body"><span class="lvl-empty">加载中…</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- L4 概念层 -->
+            <div class="lvl" data-level="L4">
+                <div class="lvl-head">
+                    <div class="lvl-title">概念层（L4）<span class="lvl-sub">词条概念解析</span></div>
+                    <span class="lay-count" id="nb-con-count"></span>
+                </div>
+                <div class="ch-layout">
+                    <div class="ch-list" id="nb-con-list"><span class="lvl-empty">加载中…</span></div>
+                    <div class="ch-detail">
+                        <div class="ch-name" id="nb-con-name">请选择条目</div>
+                        <div class="content md" id="nb-con-body"><span class="lvl-empty">加载中…</span></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+var BOOK_ID = {{ book_id | tojson }};
+var CHAPTERS = {{ chapters | tojson }};   // [{idx, title, spine_order}]
+var current = null;                       // 当前选中章 {idx, title, spine_order}
+var _editing = null;                      // 正在编辑的面板: 'book' | 'chapter' | null
+
+// ═══════════════════════════════════════════════
+// 四层级切换 + 滚动交互预留
+// 预留：滚到底自动进入下一层级（借鉴阅读页标题滚动交互）。
+// 将 AUTO_NEXT_LEVEL 置 true 即启用；onLevelScrollBottom 为切换钩子。
+// ═══════════════════════════════════════════════
+var LEVEL_ORDER = ['L1', 'L2', 'L3', 'L4'];
+var AUTO_NEXT_LEVEL = false;   // 预留开关：true = 滚到底自动进下一层级
+var _semItems = [];            // L3 语义条目
+var _conItems = [];            // L4 概念条目
+var _semCur = -1;              // 当前选中语义条目索引
+var _conCur = -1;
+
+// URL 深链参数（弹窗四角星跳转预留：/notes/{book_id}?level=L3&item=N）
+function currentUrlParams(level) {
+    var item = '';
+    if (level === 'L3' && _semCur >= 0) item = '&item=' + (_semCur + 1);
+    if (level === 'L4' && _conCur >= 0) item = '&item=' + (_conCur + 1);
+    return '?level=' + level + item;
+}
+
+function switchLevel(level, item) {
+    document.querySelectorAll('.level-nav .lv').forEach(function(b) {
+        b.classList.toggle('active', b.getAttribute('data-level') === level);
+    });
+    document.querySelectorAll('.lvl').forEach(function(el) {
+        el.classList.toggle('active', el.getAttribute('data-level') === level);
+    });
+    history.replaceState(null, '', currentUrlParams(level));
+    if (item !== undefined && item !== null) {
+        if (level === 'L3' && _semItems.length) selectSemItem(item);
+        if (level === 'L4' && _conItems.length) selectConItem(item);
+    }
+}
+
+function onLevelScrollBottom(level) {
+    if (!AUTO_NEXT_LEVEL) return;
+    var i = LEVEL_ORDER.indexOf(level);
+    if (i >= 0 && i < LEVEL_ORDER.length - 1) switchLevel(LEVEL_ORDER[i + 1]);
+}
+
+document.querySelectorAll('.lvl').forEach(function(el) {
+    el.addEventListener('scroll', function() {
+        var lv = el.getAttribute('data-level');
+        if (el.scrollTop + el.clientHeight >= el.scrollHeight - 60) onLevelScrollBottom(lv);
+    });
+});
+
+// ── 小工具 ──
+function setStatus(id, text, ok) {
+    var el = document.getElementById(id);
+    el.textContent = text || '';
+    el.className = 'status' + (ok ? ' ok' : '');
+}
+
+// ── 全书层 L1 ──
+async function loadBookLayer() {
+    var body = document.getElementById('nb-book-body');
+    try {
+        var r = await fetch('/api/layer/book/' + BOOK_ID);
+        var d = await r.json();
+        if (d.content) {
+            body.dataset.md = d.content;                 // 保留原始 Markdown（编辑预填用）
+            body.innerHTML = renderMarkdown(d.content);
+            body.classList.add('md');
+            body.classList.remove('empty');
+        } else {
+            body.dataset.md = '';
+            body.textContent = '（暂无全书层内容）';
+            body.classList.add('empty');
+        }
+    } catch (err) {
+        body.textContent = '加载失败';
+        body.classList.add('empty');
+    }
+}
+
+// ── 章节层 L2 ──
+// 通用侧列表渲染（章节列表 / 语义·概念词条列表共用）
+function renderSideList(listEl, items, mkLabel, onPick) {
+    listEl.innerHTML = '';
+    items.forEach(function(it, i) {
+        var btn = document.createElement('button');
+        btn.className = 'ch-item';
+        btn.setAttribute('data-idx', i);
+        var no = document.createElement('span');
+        no.className = 'no';
+        no.textContent = (i + 1);
+        var name = document.createElement('span');
+        name.textContent = mkLabel(it, i);
+        btn.appendChild(no);
+        btn.appendChild(name);
+        btn.addEventListener('click', function() { onPick(it, i); });
+        listEl.appendChild(btn);
+    });
+}
+
+async function loadChapterLayer(ch) {
+    var body = document.getElementById('nb-ch-body');
+    var name = document.getElementById('nb-ch-name');
+    name.textContent = ch.title;   // 逻辑章标题（spine 文件标题可能是碎片，如 "Section 2"）
+    if (ch.spine_order === null || ch.spine_order === undefined) {
+        body.textContent = '（本章无对应章节文件）';
+        body.classList.add('empty');
+        return;
+    }
+    var d = null;
+    try {
+        var r = await fetch('/api/layer/chapter/' + BOOK_ID + '/' + ch.spine_order);
+        d = await r.json();
+    } catch (err) { d = null; }
+    if (d && d.content) {
+        body.dataset.md = d.content;
+        body.innerHTML = renderMarkdown(d.content);
+        body.classList.add('md');
+        body.classList.remove('empty');
+    } else {
+        body.dataset.md = '';
+        body.textContent = '（暂无本章内容）';
+        body.classList.add('empty');
+    }
+}
+
+function selectChapter(ch) {
+    current = ch;
+    document.querySelectorAll('#nb-ch-list .ch-item').forEach(function(b) {
+        b.classList.toggle('active', parseInt(b.getAttribute('data-idx'), 10) === ch.idx);
+    });
+    document.getElementById('nb-ch-edit-btn').disabled = false;
+    document.getElementById('nb-ch-status').textContent = '';
+    loadChapterLayer(ch);
+}
+
+// ── 编辑 / 保存（全书层与章节层共用）──
+function enterEdit(kind) {
+    var isBook = kind === 'book';
+    var body = document.getElementById(isBook ? 'nb-book-body' : 'nb-ch-body');
+    var editor = document.getElementById(isBook ? 'nb-book-editor' : 'nb-ch-editor');
+    var editBtn = document.getElementById(isBook ? 'nb-book-edit-btn' : 'nb-ch-edit-btn');
+    var actions = document.getElementById(isBook ? 'nb-book-actions' : 'nb-ch-actions');
+    var isPlaceholder = body.classList.contains('empty');
+    editor.value = isPlaceholder ? '' : (body.dataset.md || body.textContent);   // 编辑用原始 Markdown
+    body.style.display = 'none';
+    editor.style.display = 'block';
+    actions.style.display = 'flex';
+    editBtn.style.display = 'none';
+    _editing = kind;
+    editor.focus();
+}
+
+function exitEdit(kind, save) {
+    var isBook = kind === 'book';
+    var body = document.getElementById(isBook ? 'nb-book-body' : 'nb-ch-body');
+    var editor = document.getElementById(isBook ? 'nb-book-editor' : 'nb-ch-editor');
+    var editBtn = document.getElementById(isBook ? 'nb-book-edit-btn' : 'nb-ch-edit-btn');
+    var actions = document.getElementById(isBook ? 'nb-book-actions' : 'nb-ch-actions');
+    if (save) {
+        body.dataset.md = editor.value || '';
+        if (editor.value) {
+            body.innerHTML = renderMarkdown(editor.value);
+            body.classList.add('md');
+            body.classList.remove('empty');
+        } else {
+            body.textContent = '（暂无内容）';
+            body.classList.add('empty');
+        }
+    }
+    body.style.display = '';
+    editor.style.display = 'none';
+    actions.style.display = 'none';
+    editBtn.style.display = '';
+    _editing = null;
+}
+
+async function savePanel(kind) {
+    var isBook = kind === 'book';
+    var editor = document.getElementById(isBook ? 'nb-book-editor' : 'nb-ch-editor');
+    var statusId = isBook ? 'nb-book-status' : 'nb-ch-status';
+    var saveBtn = document.getElementById(isBook ? 'nb-book-save-btn' : 'nb-ch-save-btn');
+    var url, payload;
+    if (isBook) {
+        url = '/api/layer/book/' + BOOK_ID;
+        payload = { content: editor.value };
+    } else {
+        if (!current || current.spine_order === null || current.spine_order === undefined) return;
+        url = '/api/layer/chapter/' + BOOK_ID + '/' + current.spine_order;
+        payload = { content: editor.value };
+    }
+    saveBtn.disabled = true;
+    setStatus(statusId, '保存中…');
+    try {
+        var r = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        exitEdit(kind, true);
+        setStatus(statusId, '已保存 ✓', true);
+        setTimeout(function() { setStatus(statusId, ''); }, 2000);
+    } catch (err) {
+        setStatus(statusId, '保存失败');
+        console.error('保存失败', err);
+    } finally {
+        saveBtn.disabled = false;
+    }
+}
+
+function setLayDetail(nameEl, bodyEl, title, content) {
+    nameEl.textContent = title;
+    if (content) {
+        bodyEl.dataset.md = content;
+        bodyEl.innerHTML = renderMarkdown(content);
+        bodyEl.classList.add('md');
+        bodyEl.classList.remove('empty');
+    } else {
+        bodyEl.dataset.md = '';
+        bodyEl.textContent = '（暂无内容）';
+        bodyEl.classList.add('empty');
+    }
+}
+
+function selectSemItem(i) {
+    if (i < 0 || i >= _semItems.length) return;
+    _semCur = i;
+    document.querySelectorAll('#nb-sem-list .ch-item').forEach(function(b) {
+        b.classList.toggle('active', parseInt(b.getAttribute('data-idx'), 10) === i);
+    });
+    var it = _semItems[i];
+    setLayDetail(document.getElementById('nb-sem-name'), document.getElementById('nb-sem-body'),
+        '语义 · ' + (i + 1), it.content || '');
+    // 仅在 L3 激活时同步 URL（初始化加载时不覆盖默认层级）
+    if (document.querySelector('.lvl[data-level="L3"]').classList.contains('active')) {
+        history.replaceState(null, '', currentUrlParams('L3'));
+    }
+}
+
+function selectConItem(i) {
+    if (i < 0 || i >= _conItems.length) return;
+    _conCur = i;
+    document.querySelectorAll('#nb-con-list .ch-item').forEach(function(b) {
+        b.classList.toggle('active', parseInt(b.getAttribute('data-idx'), 10) === i);
+    });
+    var it = _conItems[i];
+    setLayDetail(document.getElementById('nb-con-name'), document.getElementById('nb-con-body'),
+        it.term || '（无词条）', it.content || '');
+    // 仅在 L4 激活时同步 URL（初始化加载时不覆盖默认层级）
+    if (document.querySelector('.lvl[data-level="L4"]').classList.contains('active')) {
+        history.replaceState(null, '', currentUrlParams('L4'));
+    }
+}
+
+async function loadSemanticList() {
+    var list = document.getElementById('nb-sem-list');
+    var count = document.getElementById('nb-sem-count');
+    try {
+        var r = await fetch('/api/layer/semantic_list/' + BOOK_ID);
+        var d = await r.json();
+        _semItems = d.items || [];
+        count.textContent = _semItems.length ? (_semItems.length + ' 条') : '';
+        renderSideList(list, _semItems, function(it, i) {
+            return '语义 · ' + (i + 1) + ' ' + (it.text_hash ? it.text_hash.slice(0, 8) : '');
+        }, function(it, i) { selectSemItem(i); });
+        if (_semItems.length) selectSemItem(0);
+    } catch (err) {
+        list.innerHTML = '<span class="lvl-empty">加载失败</span>';
+    }
+}
+
+async function loadConceptList() {
+    var list = document.getElementById('nb-con-list');
+    var count = document.getElementById('nb-con-count');
+    try {
+        var r = await fetch('/api/layer/concept_list/' + BOOK_ID);
+        var d = await r.json();
+        _conItems = d.items || [];
+        count.textContent = _conItems.length ? (_conItems.length + ' 条') : '';
+        renderSideList(list, _conItems, function(it) {
+            return it.term || '（无词条）';
+        }, function(it, i) { selectConItem(i); });
+        if (_conItems.length) selectConItem(0);
+    } catch (err) {
+        list.innerHTML = '<span class="lvl-empty">加载失败</span>';
+    }
+}
+
+// ── 事件绑定 ──
+document.getElementById('nb-book-edit-btn').addEventListener('click', function() { enterEdit('book'); });
+document.getElementById('nb-book-save-btn').addEventListener('click', function() { savePanel('book'); });
+document.getElementById('nb-book-cancel-btn').addEventListener('click', function() { exitEdit('book', false); });
+document.getElementById('nb-ch-edit-btn').addEventListener('click', function() {
+    if (current) enterEdit('chapter');
+});
+document.getElementById('nb-ch-save-btn').addEventListener('click', function() { savePanel('chapter'); });
+document.getElementById('nb-ch-cancel-btn').addEventListener('click', function() { exitEdit('chapter', false); });
+
+// ── 初始化 ──
+renderSideList(document.getElementById('nb-ch-list'), CHAPTERS,
+    function(c) { return c.title; }, function(c) { selectChapter(c); });
+loadBookLayer();
+var _semPromise = loadSemanticList();
+var _conPromise = loadConceptList();
+if (CHAPTERS.length > 0) {
+    selectChapter(CHAPTERS[0]);
+} else {
+    document.getElementById('nb-ch-body').textContent = '（本书没有可展示的章节）';
+    document.getElementById('nb-ch-body').classList.add('empty');
+}
+
+// URL 深链：?level=L2|L3|L4&item=N（弹窗四角星跳转预留入口，直接定位到层级与词条）
+var _initParams = new URLSearchParams(location.search);
+var _initLevel = _initParams.get('level');
+var _initItem = parseInt(_initParams.get('item') || '', 10);
+if (_initLevel && _initLevel !== 'L1') {
+    // 等对应词条列表加载完成后再定位（比 setTimeout 更可靠，网络慢也不丢）
+    var _waitList = (_initLevel === 'L3') ? _semPromise
+                  : (_initLevel === 'L4') ? _conPromise
+                  : Promise.resolve();
+    _waitList.then(function() {
+        switchLevel(_initLevel, isNaN(_initItem) ? undefined : (_initItem - 1));
+    });
+}
+</script>
+</body>
+</html>

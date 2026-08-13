@@ -67,15 +67,6 @@
         #main { flex-grow:1; min-width:0; overflow-y:auto; position:relative; scroll-behavior:smooth; }
         /* 正文左移：左侧空白减半（原居中左右各半 → 左侧 1/4，右侧 3/4；按含 padding 总宽 780 算） */
         #chapter-view { position:relative; max-width:700px; margin:0 auto 0 calc((100% - 780px) / 4); padding:40px 40px 120px; }
-        /* ── 辅助阅读页（全书层 L1 / 章节层 L2 单独一页展示）── */
-        #aux-page { display:none; max-width:760px; margin:0 auto; padding:32px 40px 120px; }
-        #aux-page .aux-title { display:flex; align-items:center; gap:12px; font-family:-apple-system,sans-serif; font-size:1.5em; font-weight:bold; color:#1a1a2e; padding-bottom:12px; margin-bottom:24px; border-bottom:2px solid #3498db; }
-        #aux-page .aux-title span { flex:1; }
-        #aux-page .aux-section { margin-bottom:28px; }
-        #aux-page .aux-sec-title { font-family:-apple-system,sans-serif; font-size:1.05em; font-weight:bold; color:#2b4a63; margin-bottom:10px; padding-left:10px; border-left:3px solid #4da3d6; }
-        #aux-page .aux-sec-body { font-size:.98em; line-height:1.85; color:#212529; white-space:pre-wrap; word-break:break-word; background:#f8fbfd; border:1px solid #eef3f7; border-radius:8px; padding:16px 18px; }
-        #aux-page .aux-empty { color:#adb5bd; font-size:.9em; }
-        #aux-page .aux-loading { color:#868e96; font-size:.9em; }
         .ch-title-bar { display:flex; align-items:center; gap:12px; font-family:-apple-system,sans-serif; font-size:1.6em; font-weight:bold; color:#1a1a2e; padding:16px 0 12px; margin-bottom:20px; border-bottom:2px solid #3498db; position:sticky; top:0; background:linear-gradient(180deg,#fff 70%,rgba(255,255,255,0)); z-index:10; backdrop-filter:blur(4px); }
         .ch-title-bar #ch-title { flex:1; min-width:0; word-break:break-word; }
         .ch-content { line-height:1.8; font-size:1.15em; color:#212529; }
@@ -99,8 +90,8 @@
         #ch-nav span { color:#868e96; white-space:nowrap; }
 
         /* ── 概念层：笔触开关 + 选中高亮 + 悬停弹窗 ── */
-        #concept-toggle, #aux-toggle, #aux-exit { width:28px; height:28px; flex-shrink:0; border:1px solid #dee2e6; border-radius:6px; background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#495057; box-shadow:0 1px 4px rgba(0,0,0,.06); padding:0; font-size:14px; line-height:1; }
-        #concept-toggle:hover, #aux-toggle:hover, #aux-exit:hover { background:#f1f3f5; }
+        #concept-toggle, #aux-toggle { width:28px; height:28px; flex-shrink:0; border:1px solid #dee2e6; border-radius:6px; background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#495057; box-shadow:0 1px 4px rgba(0,0,0,.06); padding:0; font-size:14px; line-height:1; }
+        #concept-toggle:hover, #aux-toggle:hover { background:#f1f3f5; }
         #concept-toggle.active, #aux-toggle.active { background:#3498db; border-color:#3498db; color:#fff; }
         #concept-toggle svg { width:15px; height:15px; fill:currentColor; }
         .ch-content mark.concept-hl { background:#fff3bf; color:inherit; border-radius:2px; padding:0 1px; cursor:pointer; }
@@ -120,13 +111,24 @@
         .sem-bookmark.active .bm-rect { background:#4da3d6; }
         .sem-bookmark.active .bm-tri { border-left-color:#4da3d6; }
         /* 弹窗（概念/语义共用）：白底淡蓝边框，标题栏 + 右上角图钉 + 右下角拉伸（无大小边界） */
-        .semantic-pop { position:absolute; z-index:60; width:320px; height:400px; background:#fff; border:1px solid #a5d8ff; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.08); display:flex; flex-direction:column; font-family:-apple-system,sans-serif; font-size:.85em; }
-        .semantic-pop .sp-title { flex-shrink:0; padding:8px 40px 6px 12px; font-weight:bold; color:#1a1a2e; border-bottom:1px solid #eef3f7; font-size:.9em; word-break:break-all; }
+        .semantic-pop { position:absolute; z-index:500; width:320px; height:400px; background:#fff; border:1px solid #a5d8ff; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.08); display:flex; flex-direction:column; font-family:-apple-system,sans-serif; font-size:.85em; }
+        .semantic-pop .sp-title { flex-shrink:0; padding:8px 40px 6px 12px; font-weight:bold; color:#1a1a2e; border-bottom:1px solid #eef3f7; font-size:.9em; word-break:break-all; cursor:move; }
+        .semantic-pop.dragging { opacity:.92; user-select:none; }
         .semantic-pop .sp-pin { position:absolute; top:8px; right:26px; width:18px; height:18px; cursor:pointer; color:#6c757d; opacity:.5; z-index:2; display:flex; align-items:center; justify-content:center; }
         .semantic-pop .sp-pin:hover { opacity:1; }
         .semantic-pop .sp-pin.locked { opacity:1; }
         .semantic-pop .sp-pin svg { width:13px; height:13px; fill:currentColor; }
-        .semantic-pop .sp-body { flex:1; overflow-y:auto; padding:10px 12px; line-height:1.6; color:#2b4a63; white-space:pre-wrap; word-break:break-word; }
+        .semantic-pop .sp-body { flex:1; overflow-y:auto; padding:10px 12px; line-height:1.6; color:#2b4a63; word-break:break-word; }
+        .semantic-pop .sp-body p { margin:.35em 0; }
+        .semantic-pop .sp-body h1, .semantic-pop .sp-body h2, .semantic-pop .sp-body h3,
+        .semantic-pop .sp-body h4, .semantic-pop .sp-body h5, .semantic-pop .sp-body h6 { margin:.6em 0 .3em; font-size:1.05em; color:#1a1a2e; }
+        .semantic-pop .sp-body ul, .semantic-pop .sp-body ol { margin:.3em 0; padding-left:1.3em; }
+        .semantic-pop .sp-body li { margin:.15em 0; }
+        .semantic-pop .sp-body code { background:#eef3f7; border-radius:3px; padding:0 3px; font-size:.92em; }
+        .semantic-pop .sp-body pre { background:#eef3f7; border-radius:6px; padding:8px 10px; overflow-x:auto; margin:.5em 0; }
+        .semantic-pop .sp-body pre code { background:none; padding:0; }
+        .semantic-pop .sp-body a { color:#2d6cdf; }
+        .semantic-pop .sp-body hr { border:none; border-top:1px solid #dee2e6; margin:.6em 0; }
         .semantic-pop .sp-resize { position:absolute; right:0; bottom:0; width:18px; height:18px; cursor:nwse-resize; }
         .semantic-pop .sp-resize::after { content:''; position:absolute; right:3px; bottom:3px; width:8px; height:8px; border-right:2px solid #a5d8ff; border-bottom:2px solid #a5d8ff; }
     </style>
@@ -135,6 +137,7 @@
 
 <script>window.BROWSER_BOOK_ID = {{ book_id | tojson }}; window.BROWSER_BOOK_TITLE = {{ book.metadata.title | tojson }};</script>
 {% include 'browser_bar.html' %}
+{% include 'markdown_render.js' %}
 
 <div id="side-wrap">
     <div id="topbar">
@@ -152,23 +155,12 @@
     <div id="chapter-view">
         <div class="ch-title-bar" id="ch-title-bar">
             <span id="ch-title">{{ chapter_title }}</span>
-            <button id="aux-toggle" title="辅助阅读页（全书层 / 章节层）">&#10022;</button>
+            <button id="aux-toggle" title="笔记界面（全书层 / 章节层）">&#10022;</button>
             <button id="concept-toggle" title="辅助阅读：选中短词→概念弹窗，选中长句/段→两侧语义面板">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
             </button>
         </div>
         <div class="ch-content" id="ch-content">{{ chapter_content | safe }}</div>
-    </div>
-    <div id="aux-page">
-        <div class="aux-title"><span>辅助阅读</span><button id="aux-exit" title="退出辅助阅读">&#10022;</button></div>
-        <div class="aux-section">
-            <div class="aux-sec-title">全书层（L1）</div>
-            <div class="aux-sec-body" id="aux-book-body"><span class="aux-loading">加载中…</span></div>
-        </div>
-        <div class="aux-section">
-            <div class="aux-sec-title">章节层（L2）<span id="aux-chapter-name" style="font-weight:normal;color:#868e96;font-size:.85em;"></span></div>
-            <div class="aux-sec-body" id="aux-chapter-body"><span class="aux-loading">加载中…</span></div>
-        </div>
     </div>
     <div id="ch-loading"><div class="spinner"></div></div>
 </div>
@@ -743,80 +735,11 @@ document.getElementById('ch-content').addEventListener('click', function(e) {
 });
 
 // ═══════════════════════════════════════════
-// 辅助阅读：独立页（全书层L1/章节层L2）+ 笔触开关（概念/语义）+ 高亮展示
-// ── 辅助阅读页：章标题栏 ✦ / 双击标题 / 浏览器栏入口 切换 ──
+// 笔记界面入口：四角星 ✢ → 该书专门笔记页面（全书层L1 / 章节层L2）
 // ═══════════════════════════════════════════
-var auxPage = document.getElementById('aux-page');
-var chapterView = document.getElementById('chapter-view');
-var _auxLoaded = false;   // 辅助阅读页数据是否已加载
-var _auxOn = false;
-
-function toggleAuxPage() {
-    _auxOn = !_auxOn;
-    var tg = document.getElementById('aux-toggle');
-    if (tg) tg.classList.toggle('active', _auxOn);
-    auxPage.style.display = _auxOn ? 'block' : 'none';
-    chapterView.style.display = _auxOn ? 'none' : 'block';
-    if (_auxOn) {
-        if (!_auxLoaded) loadAuxPage();
-        mainEl.scrollTop = 0;
-    } else {
-        // 回到阅读页：恢复当前章高亮
-        requestAnimationFrame(function() { computeRanges(); updateHighlight(); });
-    }
-}
-
-document.getElementById('aux-toggle').addEventListener('click', function(e) {
-    e.stopPropagation();
-    toggleAuxPage();
+document.getElementById('aux-toggle').addEventListener('click', function() {
+    location.href = '/notes/' + BOOK_ID;
 });
-
-// 辅助阅读页内：四角星退出按钮 → 退出辅助阅读
-document.getElementById('aux-exit').addEventListener('click', function(e) {
-    e.stopPropagation();
-    if (_auxOn) toggleAuxPage();
-});
-
-// 双击章标题进入/退出辅助阅读（委托到标题栏，避免换章后重新绑定）
-document.getElementById('ch-title-bar').addEventListener('dblclick', function(e) {
-    if (e.target.closest && e.target.closest('button')) return;   // 点击按钮不触发
-    toggleAuxPage();
-});
-
-// 支持 URL ?aux=1：从 Library"辅助阅读"入口跳转后直接进入辅助阅读页
-(function() {
-    if (new URLSearchParams(location.search).get('aux') === '1') {
-        var tryEnter = function() {
-            if (typeof mainEl === 'undefined' || !mainEl) { setTimeout(tryEnter, 50); return; }
-            toggleAuxPage();
-            history.replaceState(null, '', location.pathname);   // 清掉参数，避免刷新重复进入
-        };
-        tryEnter();
-    }
-})();
-
-// ── 加载辅助阅读页：全书层 L1 + 章节层 L2 ──
-async function loadAuxPage() {
-    _auxLoaded = true;
-    var bookBody = document.getElementById('aux-book-body');
-    var chBody = document.getElementById('aux-chapter-body');
-    var chName = document.getElementById('aux-chapter-name');
-    try {
-        // L1 全书层
-        var rb = await fetch('/api/layer/book/' + BOOK_ID);
-        var db = await rb.json();
-        bookBody.innerHTML = db.content ? db.content : '<span class="aux-empty">（暂无全书层内容）</span>';
-        // L2 章节层（当前章）
-        var rc = await fetch('/api/layer/chapter/' + BOOK_ID + '/' + currentChapter);
-        var dc = await rc.json();
-        chName.textContent = dc.title ? '· ' + dc.title : '';
-        chBody.innerHTML = dc.content ? dc.content : '<span class="aux-empty">（暂无章节层内容）</span>';
-    } catch (err) {
-        bookBody.innerHTML = '<span class="aux-empty">加载失败</span>';
-        chBody.innerHTML = '<span class="aux-empty">加载失败</span>';
-        console.error('辅助阅读页加载失败', err);
-    }
-}
 
 // ═══════════════════════════════════════════════════════
 // 辅助阅读版块（概念层 + 语义层）—— 独立 IIFE 模块 AuxLayer
@@ -827,13 +750,17 @@ async function loadAuxPage() {
 // 后续专门的"辅助阅读"版块可在此命名空间上扩展/复写词条。
 // ═══════════════════════════════════════════════════════
 var AuxLayer = (function() {
-    var CONCEPT_MAX_LEN = 30;        // 区分阈值：≤30 字符 = 概念（弹窗）；>30 = 语义（书签+弹窗）
+    var CONCEPT_MAX_LEN = 30;        // 字数阈值（属于当前分类器实现，替换时可一并移除）
     var _semanticBookmarkId = 0;     // 书签自增序号（显示在书签上）
     var _popResize = null;           // 弹窗拉伸状态 {pop, sx, sy, sw, sh}
+    var _popDrag = null;             // 弹窗拖动状态 {pop, sx, sy, lx, ty}
 
     var CONCEPT_ON = false;          // 辅助阅读模式开关
-    var _popZ = 60;                  // 弹窗 z-index 计数（点击置顶，概念/语义共用）
+    var _popZ = 500;                 // 弹窗 z-index 计数（点击置顶，概念/语义共用）
     var _popCloseDelay = 400;        // 弹窗自动关闭延迟（从 mark 移到弹窗的缓冲，概念/语义共用）
+    var _semListCache = null;        // 语义 list 缓存（首次拉取后复用，换章不重复请求）
+    var _conListCache = null;        // 概念 list 缓存
+    var _restoredSources = {};       // 已恢复 source 集合（防并发/重复包裹）
 
     // ── 开关：关闭只隐藏弹窗，保留已有书签/高亮（与概念层一致，mark 不消失）──
     document.getElementById('concept-toggle').addEventListener('click', function() {
@@ -842,8 +769,11 @@ var AuxLayer = (function() {
         if (!CONCEPT_ON) hidePopsOnly();
     });
 
-    // ── 概念/语义 区分 ──
-    function classifySelection(text) {
+    // ── 概念/语义 分流器（可拆卸插件）──
+    // 当前实现：按字数阈值判断（≤30 字符 = 概念；>30 = 语义）。
+    // 以后接入 AI 自行判断"做段落还是做概念"时：只需替换 auxClassify 的实现
+    // （这是唯一入口），applyHighlight 等所有调用点无需改动；删除本字数逻辑不影响其他功能。
+    function auxClassify(text) {
         return (text.length <= CONCEPT_MAX_LEN) ? 'concept' : 'semantic';
     }
 
@@ -896,6 +826,18 @@ var AuxLayer = (function() {
             _popResize = { pop: pop, sx: e.clientX, sy: e.clientY, sw: pop.offsetWidth, sh: pop.offsetHeight };
             document.body.style.cursor = 'nwse-resize';
         });
+        // 拖动移动（按住标题栏）：用户拖动后暂停自动定位，位置以手动为准
+        var title = pop.querySelector('.sp-title');
+        if (title) {
+            title.addEventListener('mousedown', function(e) {
+                if (e.target.closest && e.target.closest('.sp-pin')) return;   // 图钉按钮不触发拖动
+                e.preventDefault();
+                pop._userPos = true;
+                pop.classList.add('dragging');
+                _popDrag = { pop: pop, sx: e.clientX, sy: e.clientY,
+                             lx: parseFloat(pop.style.left) || 0, ty: parseFloat(pop.style.top) || 0 };
+            });
+        }
         if (opts.onContent) opts.onContent(pop);
         return pop;
     }
@@ -923,8 +865,9 @@ var AuxLayer = (function() {
         try {
             var data = await layerGet('concept', 'term=' + encodeURIComponent(term));
             if (mark._pop !== pop) return;
-            pop.querySelector('.sp-body').textContent = data.content || '（暂无内容）';
-            saveConceptMemo(term);          // 选中即写入记忆
+            pop.querySelector('.sp-body').innerHTML = renderMarkdown(data.content || '（暂无内容）');
+            // 选中即写入记忆：原文 + 段落锚点（content 由后端填充全书层文本）
+            saveConceptMemo(term, mark.getAttribute('data-source') || term, mark.getAttribute('data-anchor') || '');
         } catch (err) { console.error('概念层请求失败', err); }
     }
     function showConceptPop(mark) {
@@ -943,16 +886,40 @@ var AuxLayer = (function() {
             pop.style.display = 'none';
         }, _popCloseDelay);
     }
-    // 概念弹窗定位：紧贴词右侧（absolute 相对 chapter-view，随滚动），装不下放左侧
+    // 概念弹窗定位：根据当前布局在上下左右四个方向中选能完整放入可视区的位置
+    // （优先右侧；放不下依次尝试左/下/上），全部放不下则 clamp 到可视区内。
+    // 用户手动拖动过（pop._userPos）则保留手动位置，不再自动定位。
     function positionConceptPop(pop, mark) {
+        if (pop._userPos) return;
         var view = document.getElementById('chapter-view');
         var vRect = view.getBoundingClientRect();
         var mRect = mark.getBoundingClientRect();
-        var left = mRect.right - vRect.left + 12;
-        var top = mRect.top - vRect.top - 6;
-        if (left + 320 > vRect.width) left = mRect.left - vRect.left - 320 - 12;
-        pop.style.left = left + 'px';
-        pop.style.top = top + 'px';
+        var pw = pop.offsetWidth || 320;
+        var ph = pop.offsetHeight || 400;
+        var gap = 8;
+        var mLeft = mRect.left - vRect.left;
+        var mTop = mRect.top - vRect.top;
+        var mBottom = mRect.bottom - vRect.top;
+        var cands = [
+            { l: mRect.right - vRect.left + gap, t: mTop - 6 },          // 右
+            { l: mRect.left - vRect.left - pw - gap, t: mTop - 6 },      // 左
+            { l: mLeft, t: mBottom + gap },                              // 下
+            { l: mLeft, t: mTop - ph - gap },                            // 上
+        ];
+        var vw = view.clientWidth, vh = view.clientHeight;
+        for (var i = 0; i < cands.length; i++) {
+            var c = cands[i];
+            if (c.l >= 0 && c.l + pw <= vw && c.t >= 0 && c.t + ph <= vh) {
+                pop.style.left = c.l + 'px';
+                pop.style.top = c.t + 'px';
+                return;
+            }
+        }
+        // 兜底：右优先，clamp 到可视区（顶部留出标题栏高度，避免被遮挡/裁剪）
+        var l = Math.max(0, Math.min(mRect.right - vRect.left + gap, vw - pw));
+        var t = Math.max(60, Math.min(mTop - 6, vh - ph - 8));
+        pop.style.left = l + 'px';
+        pop.style.top = t + 'px';
     }
 
     // ── 统一悬停委托：概念/语义 mark ──
@@ -989,7 +956,7 @@ var AuxLayer = (function() {
         // 跨段选区不处理：inline <mark> 无法合法包裹块级元素（<p>/<div>），
         // extractContents 降级会生成被浏览器拆分的无效 DOM → 正文空白
         if (rangeCrossesBlocks(range, content)) return;
-        var kind = classifySelection(text);
+        var kind = auxClassify(text);
         var mark = document.createElement('mark');
         mark.className = (kind === 'concept') ? 'concept-hl' : 'semantic-hl';
         mark.setAttribute('data-term', text);
@@ -1006,11 +973,13 @@ var AuxLayer = (function() {
             } catch (err2) { return; }
         }
         sel.removeAllRanges();
+        // 记录原文与所在段落前缀（记忆持久化：换章/离开后回来据此恢复高亮）
+        mark.setAttribute('data-source', text);
+        mark.setAttribute('data-anchor', paraPrefixOf(mark));
         if (kind === 'semantic') {
-            addSemanticBookmark(mark);   // 语义：书签 + 自动弹窗
+            createSemanticBookmark(mark, true);   // 语义：书签 + 自动弹窗
         } else {
-            initConceptMark(mark);       // 概念：每词一独立弹窗（hover 显示）
-            saveConceptMemo(text);       // 选中即写入记忆
+            initConceptMark(mark);       // 概念：每词一独立弹窗（hover 显示）；记忆由 loadConceptContent 写入
         }
     }
 
@@ -1035,7 +1004,8 @@ var AuxLayer = (function() {
     }
 
     // ── 语义：书签（序号 + ×删除 + 深浅色开关）→ 段落右侧弹窗 ──
-    function addSemanticBookmark(mark) {
+    // 语义书签创建（选中与恢复共用；autoPop=false 时不自动弹窗）
+    function createSemanticBookmark(mark, autoPop) {
         var view = document.getElementById('chapter-view');
         var seq = ++_semanticBookmarkId;
         var bm = document.createElement('button');
@@ -1046,28 +1016,18 @@ var AuxLayer = (function() {
         bm.setAttribute('data-term', mark.getAttribute('data-term') || '');
         bm.innerHTML = '<span class="bm-rect"><span class="bm-num">' + seq + '</span></span>' +
                        '<span class="bm-tri"></span>';
-        bm.addEventListener('click', function(e) {
-            e.stopPropagation();
-            showSemanticPop(bm);   // 点击 = 显示（与悬停一致）
-        });
-        // 悬停书签 → 显示弹窗 + 取消自动关闭；移开 → 调度关闭
-        bm.addEventListener('mouseenter', function() {
-            clearTimeout(bm._closeTimer);
-            showSemanticPop(bm);
-        });
-        bm.addEventListener('mouseleave', function() {
-            scheduleSemanticClose(bm);
-        });
+        bm.addEventListener('click', function(e) { e.stopPropagation(); showSemanticPop(bm); });
+        bm.addEventListener('mouseenter', function() { clearTimeout(bm._closeTimer); showSemanticPop(bm); });
+        bm.addEventListener('mouseleave', function() { scheduleSemanticClose(bm); });
         view.appendChild(bm);
-        mark._bookmark = bm;
-        bm._mark = mark;
-        bm._on = true;
+        mark._bookmark = bm; bm._mark = mark; bm._on = true;
         positionSemantic(bm, mark);
-        createPop(bm, mark);          // 自动打开弹窗
+        createPop(bm, mark, autoPop !== false);
         return bm;
     }
 
     // 定位（文档坐标 = 视口差，滚动自动跟随；不加 scrollTop）
+    // 语义层固定在段落右侧；弹窗 clamp 到可视区（顶部避开标题栏），用户拖动后保留手动位置。
     function positionSemantic(bm, mark) {
         var view = document.getElementById('chapter-view');
         var vRect = view.getBoundingClientRect();
@@ -1076,9 +1036,16 @@ var AuxLayer = (function() {
         bm.style.top = (mRect.top - vRect.top + (mRect.height / 2) - 22) + 'px';
         var pop = bm._pop;
         if (pop) {
+            if (pop._userPos) return;   // 用户拖过 → 保留手动位置
             var cRect = document.getElementById('ch-content').getBoundingClientRect();
-            pop.style.left = (cRect.right - vRect.left + 16) + 'px';   // 正文右缘 + 1-2 字符
-            pop.style.top = (mRect.top - vRect.top - 6) + 'px';
+            var pw = pop.offsetWidth || 320, ph = pop.offsetHeight || 400;
+            var vh = view.clientHeight;
+            var l = cRect.right - vRect.left + 16;                 // 正文右缘 + 1-2 字符
+            var t = mRect.top - vRect.top - 6;
+            l = Math.max(8, l);                                    // 防左溢出
+            t = Math.max(60, Math.min(t, vh - ph - 8));            // 顶部避开标题栏，底部不溢出
+            pop.style.left = l + 'px';
+            pop.style.top = t + 'px';
         }
     }
 
@@ -1109,7 +1076,7 @@ var AuxLayer = (function() {
     }
 
     // 语义弹窗：段落右侧，白底淡蓝边框，标题(序号) + 图钉 + 拉伸（与概念弹窗共用 createLayerPop）
-    function createPop(bm, mark) {
+    function createPop(bm, mark, show) {
         bm._locked = false;
         bm._pop = createLayerPop(mark, {
             title: '语义 · ' + bm.getAttribute('data-id'),
@@ -1120,6 +1087,7 @@ var AuxLayer = (function() {
             onContent: function(pop) { loadPopContent(bm, pop); }
         });
         positionSemantic(bm, mark);
+        if (show === false) bm._pop.style.display = 'none';   // 恢复场景不自动弹窗
     }
 
     async function loadPopContent(bm, pop) {
@@ -1127,41 +1095,52 @@ var AuxLayer = (function() {
         try {
             var data = await layerGet('semantic', 'text=' + encodeURIComponent(term));
             if (bm._pop !== pop) return;   // 书签点击不依赖开关，仅防竞态
-            pop.querySelector('.sp-body').textContent = data.content || '（暂无内容）';
-            // 选中即写入记忆（固定填充物；命中时保持最新）
-            saveSemanticMemo(term, data.content || '');
+            pop.querySelector('.sp-body').innerHTML = renderMarkdown(data.content || '（暂无内容）');
+            // 选中即写入记忆：原文 + 段落锚点（content 由后端填充全书层文本）
+            saveSemanticMemo(term,
+                (bm._mark && bm._mark.getAttribute('data-source')) || term,
+                (bm._mark && bm._mark.getAttribute('data-anchor')) || '');
         } catch (err) { console.error('语义层请求失败', err); }
     }
 
     // ── 弹窗拉伸（共享管理器，无大小边界）──
     document.addEventListener('mousemove', function(e) {
-        if (!_popResize) return;
-        var r = _popResize;
-        r.pop.style.width = (r.sw + e.clientX - r.sx) + 'px';
-        r.pop.style.height = (r.sh + e.clientY - r.sy) + 'px';
+        if (_popDrag) {
+            var d = _popDrag;
+            d.pop.style.left = (d.lx + e.clientX - d.sx) + 'px';
+            d.pop.style.top = (d.ty + e.clientY - d.sy) + 'px';
+            return;
+        }
+        if (_popResize) {
+            var r = _popResize;
+            r.pop.style.width = (r.sw + e.clientX - r.sx) + 'px';
+            r.pop.style.height = (r.sh + e.clientY - r.sy) + 'px';
+        }
     });
     document.addEventListener('mouseup', function() {
+        if (_popDrag) {
+            _popDrag.pop.classList.remove('dragging');
+            _popDrag = null;
+        }
         if (_popResize) { _popResize = null; document.body.style.cursor = ''; }
     });
 
-    // ── 记忆写入（选中即缓存 → layer 表）──
-    function saveSemanticMemo(text, content) {
+    // ── 记忆写入（选中即缓存 → layer 表；content 缺省时后端自动填充全书层文本）──
+    function saveSemanticMemo(text, sourceText, anchorText) {
         fetch('/api/layer/semantic/' + BOOK_ID, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: text, content: content || '' })
-        }).catch(function() {});
+            body: JSON.stringify({ text: text, content: '', source_text: sourceText || text, anchor_text: anchorText || '' })
+        }).then(function(r) { if (r.ok) _semListCache = null; })   // 记忆更新 → 缓存失效，下次恢复重新拉取
+          .catch(function() {});
     }
-    function saveConceptMemo(term) {
-        layerGet('concept', 'term=' + encodeURIComponent(term))
-            .then(function(data) {
-                return fetch('/api/layer/concept/' + BOOK_ID, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ term: term, content: data.content || '' })
-                });
-            })
-            .catch(function() {});
+    function saveConceptMemo(term, sourceText, anchorText) {
+        fetch('/api/layer/concept/' + BOOK_ID, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ term: term, content: '', source_text: sourceText || term, anchor_text: anchorText || '' })
+        }).then(function(r) { if (r.ok) _conListCache = null; })   // 记忆更新 → 缓存失效，下次恢复重新拉取
+          .catch(function() {});
     }
 
     // 仅隐藏所有弹窗（关闭开关用）：书签/高亮保留，并同步为“关闭”态（浅色/无下划线），
@@ -1180,32 +1159,134 @@ var AuxLayer = (function() {
         document.querySelectorAll('.semantic-pop').forEach(function(p) { p.remove(); });
         document.querySelectorAll('.sem-bookmark').forEach(function(b) { b.remove(); });
         _semanticBookmarkId = 0;
+        _restoredSources = {};   // 新章节内容需重新恢复，清空防重集合
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // 记忆恢复：先记录后识别 —— 选中时已把原文(source_text)和所在段落前缀
+    // (anchor_text) 写入 layer 表；离开/换章/刷新后回来，据此在当前章正文中
+    // 重新定位并恢复高亮 mark 与书签（语义层），保证记忆不丢失。
+    // ═══════════════════════════════════════════════════════
+    function paraPrefixOf(el) {
+        var content = document.getElementById('ch-content');
+        var node = el;
+        while (node && node !== content && node !== document.body) {
+            if (node.nodeType === 1 && /^(P|DIV|H1|H2|H3|H4|H5|H6|LI|BLOCKQUOTE)$/.test(node.tagName)) break;
+            node = node.parentNode;
+        }
+        if (!node || node === document.body) return '';
+        return (node.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 40);
+    }
+
+    // 在容器内按原文匹配并包裹 mark（单文本节点内；跨节点暂跳过，避免破坏正文 DOM）
+    function wrapMarkIn(container, text, kind) {
+        if (!text) return null;
+        var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+        var nodes = [], offsets = [], full = '', n;
+        while ((n = walker.nextNode())) { nodes.push(n); offsets.push(full.length); full += n.textContent; }
+        var idx = full.indexOf(text);
+        if (idx < 0) return null;
+        var endIdx = idx + text.length;
+        var si = -1, so = 0, ei = -1, eo = 0;
+        for (var i = 0; i < nodes.length; i++) {
+            var s = offsets[i], e = offsets[i] + nodes[i].textContent.length;
+            if (si < 0 && idx >= s && idx <= e) { si = i; so = idx - s; }
+            if (ei < 0 && endIdx >= s && endIdx <= e) { ei = i; eo = endIdx - s; }
+        }
+        if (si < 0 || ei < 0 || si !== ei) return null;   // 跨文本节点（粗体/斜体分隔）暂跳过
+        var tn = nodes[si];
+        var before = document.createTextNode(tn.textContent.slice(0, so));
+        var mid = document.createTextNode(tn.textContent.slice(so, eo));
+        var after = document.createTextNode(tn.textContent.slice(eo));
+        var mark = document.createElement('mark');
+        mark.className = (kind === 'concept') ? 'concept-hl' : 'semantic-hl';
+        mark.setAttribute('data-term', text);
+        mark.setAttribute('data-kind', kind);
+        mark.setAttribute('data-source', text);
+        mark.appendChild(mid);
+        var parent = tn.parentNode;
+        parent.replaceChild(after, tn);
+        parent.insertBefore(mark, after);
+        parent.insertBefore(before, mark);
+        return mark;
+    }
+
+    function restoreOne(content, item, kind) {
+        var source = (kind === 'concept') ? (item.source_text || item.term) : (item.source_text || '');
+        if (!source) return;
+        if (!content.isConnected) return;          // 内容已被换章替换 → 跳过（防孤儿书签）
+        if (_restoredSources[source]) return;      // 已恢复过 → 跳过（防重复包裹）
+        var anchor = (item.anchor_text || '').replace(/\s+/g, ' ');
+        // 优先按段落锚点定位到原段落（避免短词条全书误标）
+        var target = null;
+        if (anchor) {
+            var paras = content.querySelectorAll('p, div, h1, h2, h3, h4, h5, h6, li, blockquote');
+            for (var i = 0; i < paras.length; i++) {
+                if ((paras[i].textContent || '').replace(/\s+/g, ' ').indexOf(anchor) >= 0) {
+                    target = paras[i]; break;
+                }
+            }
+        }
+        if (!target) {
+            if (kind === 'concept') return;   // 锚点不在本章 → 短词条不全书匹配，避免误标
+            target = content;                 // 语义原文较长，全书匹配一次
+        }
+        var mark = wrapMarkIn(target, source, kind);
+        if (mark) {
+            _restoredSources[source] = true;
+            if (kind === 'semantic') createSemanticBookmark(mark, false);   // 恢复：不自动弹窗
+            else initConceptMark(mark);   // 概念：恢复弹窗（hover 显示）
+        }
+    }
+
+    // 拉取语义/概念列表（带缓存：书未变则首次拉取后复用，换章不重复请求）
+    async function _getSemItems() {
+        if (!_semListCache) {
+            var r = await fetch('/api/layer/semantic_list/' + BOOK_ID);
+            _semListCache = (await r.json()).items || [];
+        }
+        return _semListCache;
+    }
+    async function _getConItems() {
+        if (!_conListCache) {
+            var r = await fetch('/api/layer/concept_list/' + BOOK_ID);
+            _conListCache = (await r.json()).items || [];
+        }
+        return _conListCache;
+    }
+
+    async function restoreHighlights() {
+        var content = document.getElementById('ch-content');
+        if (!content || !content.isConnected) return;   // 内容已被替换则跳过
+        try {
+            var sem = await _getSemItems();
+            var con = await _getConItems();
+            for (var i = 0; i < sem.length; i++) restoreOne(content, sem[i], 'semantic');
+            for (var j = 0; j < con.length; j++) restoreOne(content, con[j], 'concept');
+        } catch (e) { console.error('恢复高亮失败', e); }
     }
 
     return {
         isOn: function() { return CONCEPT_ON; },
         reset: reset,
+        restore: restoreHighlights,
     };
 })();
 
 // ═══════════════════════════════════════════
-// 换章统一清理：书签/弹窗/概念弹窗/辅助阅读状态 一并清除
+// 换章统一清理：书签/弹窗/概念弹窗 一并清除
 // （唯一一处 loadChapter 包装，避免多次包装冲突）
 // ═══════════════════════════════════════════
 var _origLoad = loadChapter;
 loadChapter = function(idx, scrollTo, anchor) {
     AuxLayer.reset();
-    if (_auxOn) toggleAuxPage();      // 若在辅助阅读页则退出
-    _auxLoaded = false;               // 下次进辅助页重新加载（含新章节）
-    return _origLoad(idx, scrollTo, anchor);
+    return _origLoad(idx, scrollTo, anchor).then(function() {
+        AuxLayer.restore();   // 新章内容加载后恢复已记录的高亮/书签
+    });
 };
 
-// 辅助阅读页切换：进入时清理阅读页的辅助状态，避免与辅助页冲突
-var _origToggleAux = toggleAuxPage;
-toggleAuxPage = function() {
-    if (!_auxOn) AuxLayer.reset();
-    return _origToggleAux();
-};
+// 页面加载完成后恢复已记录的高亮/书签（离开页面再回来依然可见）
+setTimeout(function() { AuxLayer.restore(); }, 400);
 
 </script>
 </body>
