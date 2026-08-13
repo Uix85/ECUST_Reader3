@@ -93,7 +93,7 @@
         #concept-toggle, #aux-toggle { width:28px; height:28px; flex-shrink:0; border:1px solid #dee2e6; border-radius:6px; background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#495057; box-shadow:0 1px 4px rgba(0,0,0,.06); padding:0; font-size:14px; line-height:1; }
         #concept-toggle:hover, #aux-toggle:hover { background:#f1f3f5; }
         #concept-toggle.active, #aux-toggle.active { background:#3498db; border-color:#3498db; color:#fff; }
-        #concept-toggle svg { width:15px; height:15px; fill:currentColor; }
+        #concept-toggle svg, #aux-toggle svg { width:15px; height:15px; fill:currentColor; }
         .ch-content mark.concept-hl { background:#fff3bf; color:inherit; border-radius:2px; padding:0 1px; cursor:pointer; }
         .ch-content mark.concept-hl:hover { background:#ffd43b; }
         /* 语义下划线：开启显示、关闭隐藏（.off）、悬停书签时临时显现 */
@@ -101,23 +101,25 @@
         .ch-content mark.semantic-hl.off { border-bottom-color:transparent; }
         .ch-content mark.semantic-hl:hover { background:rgba(77,163,214,.12); }
         /* ── 语义层：蓝色下划线 + 段落左侧书签（序号）+ 段落右侧弹窗 ── */
-        /* 书签：矩形尾巴(数字) + 三角形尖端(指向正文)，2 倍尺寸；开启=深色，关闭=浅色 */
-        .sem-bookmark { position:absolute; left:-66px; display:flex; align-items:center; cursor:pointer; z-index:40; background:transparent; border:none; padding:0; user-select:none; }
-        .sem-bookmark .bm-rect { width:32px; height:44px; background:#a5d8ff; border-radius:6px 0 0 6px; box-shadow:0 2px 6px rgba(0,0,0,.15); display:flex; align-items:center; justify-content:center; }
-        .sem-bookmark .bm-num { font-family:-apple-system,sans-serif; font-size:20px; font-weight:bold; color:#fff; line-height:1; }
-        .sem-bookmark .bm-tri { width:0; height:0; border-top:22px solid transparent; border-bottom:22px solid transparent; border-left:26px solid #a5d8ff; }
-        .sem-bookmark:hover .bm-rect { background:#74c0fc; }
-        .sem-bookmark:hover .bm-tri { border-left-color:#74c0fc; }
-        .sem-bookmark.active .bm-rect { background:#4da3d6; }
-        .sem-bookmark.active .bm-tri { border-left-color:#4da3d6; }
-        /* 弹窗（概念/语义共用）：白底淡蓝边框，标题栏 + 右上角图钉 + 右下角拉伸（无大小边界） */
+        /* 书签：一体化类锥形（横向拉长，宽44:高27≈1:0.618 黄金比例），右侧锥尖指向正文；开启=深色，关闭=浅色 */
+        .sem-bookmark { position:absolute; left:-24px; width:44px; height:27px; background:#a5d8ff; clip-path:polygon(0 0, 78% 0, 100% 50%, 78% 100%, 0 100%); filter:drop-shadow(0 2px 4px rgba(0,0,0,.18)); display:flex; align-items:center; justify-content:center; padding-right:10px; cursor:pointer; z-index:40; border:none; user-select:none; }
+        .sem-bookmark .bm-num { font-family:-apple-system,sans-serif; font-size:15px; font-weight:bold; color:#fff; line-height:1; }
+        .sem-bookmark:hover { background:#74c0fc; }
+        .sem-bookmark.active { background:#4da3d6; }
+        /* 弹窗（概念/语义共用）：白底淡蓝边框，标题栏 + 右上角图标区（四角星跳转/图钉锁定/八方箭头拖动）+ 右下角拉伸（无大小边界） */
         .semantic-pop { position:absolute; z-index:500; width:320px; height:400px; background:#fff; border:1px solid #a5d8ff; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.08); display:flex; flex-direction:column; font-family:-apple-system,sans-serif; font-size:.85em; }
-        .semantic-pop .sp-title { flex-shrink:0; padding:8px 40px 6px 12px; font-weight:bold; color:#1a1a2e; border-bottom:1px solid #eef3f7; font-size:.9em; word-break:break-all; cursor:move; }
+        .semantic-pop .sp-title { flex-shrink:0; padding:8px 88px 6px 12px; font-weight:bold; color:#1a1a2e; border-bottom:1px solid #eef3f7; font-size:.9em; word-break:break-all; }
         .semantic-pop.dragging { opacity:.92; user-select:none; }
-        .semantic-pop .sp-pin { position:absolute; top:8px; right:26px; width:18px; height:18px; cursor:pointer; color:#6c757d; opacity:.5; z-index:2; display:flex; align-items:center; justify-content:center; }
+        .semantic-pop .sp-jump { position:absolute; top:5px; right:54px; width:22px; height:22px; cursor:pointer; z-index:2; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid #dee2e6; border-radius:5px; color:#6c757d; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+        .semantic-pop .sp-jump:hover { background:#f1f3f5; color:#2d6cdf; }
+        .semantic-pop .sp-jump svg { width:15px; height:15px; fill:currentColor; display:block; }
+        .semantic-pop .sp-pin { position:absolute; top:7px; right:28px; width:20px; height:20px; cursor:pointer; color:#6c757d; opacity:.5; z-index:2; display:flex; align-items:center; justify-content:center; }
         .semantic-pop .sp-pin:hover { opacity:1; }
         .semantic-pop .sp-pin.locked { opacity:1; }
         .semantic-pop .sp-pin svg { width:13px; height:13px; fill:currentColor; }
+        .semantic-pop .sp-move { position:absolute; top:7px; right:4px; width:20px; height:20px; color:#6c757d; opacity:.5; z-index:2; display:flex; align-items:center; justify-content:center; }
+        .semantic-pop .sp-move:hover { opacity:1; }
+        .semantic-pop .sp-move svg { width:15px; height:15px; fill:currentColor; }
         .semantic-pop .sp-body { flex:1; overflow-y:auto; padding:10px 12px; line-height:1.6; color:#2b4a63; word-break:break-word; }
         .semantic-pop .sp-body p { margin:.35em 0; }
         .semantic-pop .sp-body h1, .semantic-pop .sp-body h2, .semantic-pop .sp-body h3,
@@ -155,7 +157,9 @@
     <div id="chapter-view">
         <div class="ch-title-bar" id="ch-title-bar">
             <span id="ch-title">{{ chapter_title }}</span>
-            <button id="aux-toggle" title="笔记界面（全书层 / 章节层）">&#10022;</button>
+            <button id="aux-toggle" title="辅助键（全书层 / 章节层）">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z"/></svg>
+            </button>
             <button id="concept-toggle" title="解释笔：开启后选中文本划词（长句/段 → 语义，短词 → 概念）">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
             </button>
@@ -784,6 +788,17 @@ requestAnimationFrame(function() {
     _autoCollapseArmed = false;  // 首次加载不自动折叠
     computeRanges();
     updateHighlight();
+    // 从辅助阅读返回（?rt=1）：恢复到进入时的章节滚动位置
+    try {
+        var _qp = new URLSearchParams(location.search);
+        var _pos = (_qp.get('rt') === '1') ? JSON.parse(sessionStorage.getItem('reader3_ret_' + BOOK_ID) || 'null') : null;
+        if (_pos && _pos.idx === currentChapter && typeof _pos.scrollTop === 'number') {
+            sessionStorage.removeItem('reader3_ret_' + BOOK_ID);
+            mainEl.style.scrollBehavior = 'auto';
+            mainEl.scrollTop = _pos.scrollTop;
+            requestAnimationFrame(function() { mainEl.style.scrollBehavior = 'smooth'; });
+        }
+    } catch (e) {}
 });
 
 mainEl.addEventListener('wheel', function(e) {
@@ -836,9 +851,18 @@ document.getElementById('ch-content').addEventListener('click', function(e) {
 });
 
 // ═══════════════════════════════════════════
-// 笔记界面入口：四角星 ✢ → 该书专门笔记页面（全书层L1 / 章节层L2）
+// 辅助键入口：四角星组合图标 → 该书辅助阅读页面（全书层L1 / 章节层L2）
+// 进入前记忆当前阅读位置（章节+滚动），返回时恢复到原位置
 // ═══════════════════════════════════════════
+function saveReaderReturnPos() {
+    try {
+        sessionStorage.setItem('reader3_ret_' + BOOK_ID,
+            JSON.stringify({ idx: currentChapter, scrollTop: mainEl.scrollTop }));
+    } catch (e) {}
+}
+
 document.getElementById('aux-toggle').addEventListener('click', function() {
+    saveReaderReturnPos();
     location.href = '/notes/' + BOOK_ID;
 });
 
@@ -878,7 +902,39 @@ var AuxLayer = (function() {
         return (text.length <= CONCEPT_MAX_LEN) ? 'concept' : 'semantic';
     }
 
-    // ── 弹窗公共装饰：图钉锁定 + 点击置顶 + 悬停保持/离开关闭（概念/语义共用）──
+    // ── 图钉锁定持久化（localStorage）：打开固定后翻页/刷新回来弹窗保持显现 ──
+    function pinKey(kind, term) { return 'reader3_pin_' + BOOK_ID + '_' + kind + '_' + term; }
+    function savePinState(kind, term, locked) {
+        try {
+            if (locked) localStorage.setItem(pinKey(kind, term), '1');
+            else localStorage.removeItem(pinKey(kind, term));
+        } catch (e) {}
+    }
+    function isPinLocked(kind, term) {
+        try { return localStorage.getItem(pinKey(kind, term)) === '1'; } catch (e) { return false; }
+    }
+    // ── 四角星跳转：跳到笔记界面对应词条（语义 L3 / 概念 L4，带词条序号）──
+    function jumpToNotes(level, term) {
+        var find = (level === 'L3')
+            ? _getSemItems().then(function(items) {
+                for (var i = 0; i < items.length; i++) {
+                    if ((items[i].source_text || items[i].text || '') === term) return i + 1;
+                }
+                return null;
+            })
+            : _getConItems().then(function(items) {
+                for (var i = 0; i < items.length; i++) {
+                    if ((items[i].term || items[i].source_text || '') === term) return i + 1;
+                }
+                return null;
+            });
+        find.then(function(n) {
+            saveReaderReturnPos();   // 记忆当前阅读位置（返回时恢复到原处）
+            location.href = '/notes/' + BOOK_ID + '?level=' + level + (n ? '&item=' + n : '');
+        });
+    }
+
+    // ── 弹窗公共装饰：四角星跳转 + 图钉锁定 + 点击置顶 + 悬停保持/离开关闭（概念/语义共用）──
     function bringToFront(pop) {
         var cur = parseInt(window.getComputedStyle(pop).zIndex, 10) || 0;
         if (cur > _popZ) _popZ = cur;   // 吸收外部更高的初始 z
@@ -894,6 +950,15 @@ var AuxLayer = (function() {
                 st.setLocked(locked);
                 pin.classList.toggle('locked', locked);
                 pin.innerHTML = locked ? LOCK_ICON_PIN : LOCK_ICON_UNPIN;
+                if (st.onLock) st.onLock(locked);   // 持久化锁定状态（翻页/刷新后保持）
+            });
+        }
+        // 四角星：跳转到笔记界面对应词条（语义 L3 / 概念 L4）
+        var jump = pop.querySelector('.sp-jump');
+        if (jump) {
+            jump.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (st.onJump) st.onJump();
             });
         }
         pop.addEventListener('mousedown', function() { bringToFront(pop); });
@@ -901,25 +966,27 @@ var AuxLayer = (function() {
         pop.addEventListener('mouseleave', function() { if (st.onLeave) st.onLeave(); });
     }
 
-    // 统一弹窗创建（概念/语义共用）：标题栏 + 图钉 + 置顶 + 拉伸 + 悬停保持/关闭
+    // 统一弹窗创建（概念/语义共用）：标题栏 + 四角星跳转 + 图钉 + 八方箭头拖动 + 置顶 + 拉伸 + 悬停保持/关闭
     function createLayerPop(mark, opts) {
         var view = document.getElementById('chapter-view');
         var pop = document.createElement('div');
         pop.className = 'semantic-pop';
         pop.innerHTML = '<div class="sp-title"></div>' +
-                        '<div class="sp-pin" title="锁定/解锁（锁定后移开不关闭）"></div>' +
+                        '<div class="sp-jump" title="跳到辅助键对应词条"></div>' +
+                        '<div class="sp-pin" title="锁定/解锁（锁定后弹窗保持显示）"></div>' +
+                        '<div class="sp-move" title="拖动移动弹窗"></div>' +
                         '<div class="sp-body">加载中…</div>' +
                         '<div class="sp-resize" title="拖动调整大小"></div>';
         view.appendChild(pop);
         if (opts.title) pop.querySelector('.sp-title').textContent = opts.title;
         else pop.querySelector('.sp-title').style.display = 'none';
+        // 大四角星 + 小四角星组合图标（跳转笔记界面对应词条）
+        pop.querySelector('.sp-jump').innerHTML =
+            '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z"/></svg>';
+        pop.querySelector('.sp-move').innerHTML =
+            '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 9h4V6h3l-5-5-5 5h3v3zm-1 1H6V7l-5 5 5 5v-3h3v-4zm14 2l-5-5v3h-3v4h3v3l5-5zm-9 3h-4v3H7l5 5 5-5h-3v-3z"/></svg>';
         opts.setLocked(false);
-        wirePopChrome(pop, {
-            getLocked: opts.getLocked,
-            setLocked: opts.setLocked,
-            clearTimer: opts.clearTimer,
-            onLeave: opts.onLeave
-        });
+        wirePopChrome(pop, opts);
         var rs = pop.querySelector('.sp-resize');
         rs.addEventListener('mousedown', function(e) {
             e.preventDefault();
@@ -927,18 +994,16 @@ var AuxLayer = (function() {
             _popResize = { pop: pop, sx: e.clientX, sy: e.clientY, sw: pop.offsetWidth, sh: pop.offsetHeight };
             document.body.style.cursor = 'nwse-resize';
         });
-        // 拖动移动（按住标题栏）：用户拖动后暂停自动定位，位置以手动为准
-        var title = pop.querySelector('.sp-title');
-        if (title) {
-            title.addEventListener('mousedown', function(e) {
-                if (e.target.closest && e.target.closest('.sp-pin')) return;   // 图钉按钮不触发拖动
-                e.preventDefault();
-                pop._userPos = true;
-                pop.classList.add('dragging');
-                _popDrag = { pop: pop, sx: e.clientX, sy: e.clientY,
-                             lx: parseFloat(pop.style.left) || 0, ty: parseFloat(pop.style.top) || 0 };
-            });
-        }
+        // 拖动移动：仅右上角八方箭头图标可拖动（拖动后暂停自动定位，位置以手动为准）
+        var mv = pop.querySelector('.sp-move');
+        mv.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            pop._userPos = true;
+            pop.classList.add('dragging');
+            _popDrag = { pop: pop, sx: e.clientX, sy: e.clientY,
+                         lx: parseFloat(pop.style.left) || 0, ty: parseFloat(pop.style.top) || 0 };
+        });
         if (opts.onContent) opts.onContent(pop);
         return pop;
     }
@@ -951,15 +1016,26 @@ var AuxLayer = (function() {
     // ── 概念层：每词一独立弹窗（hover 显示 / 移开自动关闭 / 图钉锁定 / 点击置顶）──
     function initConceptMark(mark) {
         mark._locked = false;
+        var term = mark.getAttribute('data-term') || '';
         mark._pop = createLayerPop(mark, {
-            title: mark.getAttribute('data-term') || '',
+            title: term,
             getLocked: function() { return mark._locked; },
             setLocked: function(v) { mark._locked = v; },
+            onLock: function(v) { savePinState('concept', term, v); },
+            onJump: function() { jumpToNotes('L4', term); },
             clearTimer: function() { if (mark._cTimer) { clearTimeout(mark._cTimer); mark._cTimer = null; } },
             onLeave: function() { scheduleConceptClose(mark); },
             onContent: function(pop) { loadConceptContent(mark, pop); }
         });
         mark._pop.style.display = 'none';   // 初始隐藏，hover 时显示
+        // 持久化锁定恢复：打开固定后翻页/刷新回来弹窗保持显现
+        if (isPinLocked('concept', term)) {
+            mark._locked = true;
+            var pin = mark._pop.querySelector('.sp-pin');
+            pin.classList.add('locked');
+            pin.innerHTML = LOCK_ICON_PIN;
+            showConceptPop(mark);
+        }
     }
     async function loadConceptContent(mark, pop) {
         var term = mark.getAttribute('data-term') || '';
@@ -1114,8 +1190,7 @@ var AuxLayer = (function() {
         bm.title = '点击展开/收起语义内容';
         bm.setAttribute('data-id', seq);
         bm.setAttribute('data-term', mark.getAttribute('data-term') || '');
-        bm.innerHTML = '<span class="bm-rect"><span class="bm-num">' + seq + '</span></span>' +
-                       '<span class="bm-tri"></span>';
+        bm.innerHTML = '<span class="bm-num">' + seq + '</span>';   // 一体化类锥形（clip-path），不再分 rect/tri
         bm.addEventListener('click', function(e) { e.stopPropagation(); showSemanticPop(bm); });
         bm.addEventListener('mouseenter', function() { clearTimeout(bm._closeTimer); showSemanticPop(bm); });
         bm.addEventListener('mouseleave', function() { scheduleSemanticClose(bm); });
@@ -1132,8 +1207,8 @@ var AuxLayer = (function() {
         var view = document.getElementById('chapter-view');
         var vRect = view.getBoundingClientRect();
         var mRect = mark.getBoundingClientRect();
-        // 书签垂直居中于选中字段（书签高 44 → 偏移 22）
-        bm.style.top = (mRect.top - vRect.top + (mRect.height / 2) - 22) + 'px';
+        // 书签垂直居中于选中字段（书签高 27 → 偏移 14）
+        bm.style.top = (mRect.top - vRect.top + (mRect.height / 2) - 14) + 'px';
         var pop = bm._pop;
         if (pop) {
             if (pop._userPos) return;   // 用户拖过 → 保留手动位置
@@ -1173,19 +1248,30 @@ var AuxLayer = (function() {
         bm._closeTimer = setTimeout(function() { hideSemanticPop(bm); }, _popCloseDelay);
     }
 
-    // 语义弹窗：段落右侧，白底淡蓝边框，标题(序号) + 图钉 + 拉伸（与概念弹窗共用 createLayerPop）
+    // 语义弹窗：段落右侧，白底淡蓝边框，标题(序号) + 四角星跳转 + 图钉 + 八方箭头拖动 + 拉伸（与概念弹窗共用 createLayerPop）
     function createPop(bm, mark, show) {
         bm._locked = false;
+        var term = bm.getAttribute('data-term') || '';
         bm._pop = createLayerPop(mark, {
             title: '语义 · ' + bm.getAttribute('data-id'),
             getLocked: function() { return bm._locked; },
             setLocked: function(v) { bm._locked = v; },
+            onLock: function(v) { savePinState('semantic', term, v); },
+            onJump: function() { jumpToNotes('L3', term); },
             clearTimer: function() { clearTimeout(bm._closeTimer); },
             onLeave: function() { scheduleSemanticClose(bm); },
             onContent: function(pop) { loadPopContent(bm, pop); }
         });
         positionSemantic(bm, mark);
         if (show === false) bm._pop.style.display = 'none';   // 恢复场景不自动弹窗
+        // 持久化锁定恢复：打开固定后翻页/刷新回来弹窗保持显现
+        if (isPinLocked('semantic', term)) {
+            bm._locked = true;
+            var pin = bm._pop.querySelector('.sp-pin');
+            pin.classList.add('locked');
+            pin.innerHTML = LOCK_ICON_PIN;
+            showSemanticPop(bm);
+        }
     }
 
     async function loadPopContent(bm, pop) {

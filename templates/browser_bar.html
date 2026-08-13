@@ -12,6 +12,7 @@
     #browser-bar .bb-item:hover { background:#dde2e6; }
     #browser-bar .bb-item.active { background:#cfe0f0; color:#1a5276; font-weight:600; }
     #browser-bar .bb-ico { flex-shrink:0; width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:bold; background:#fff; border:1px solid #d5d9dd; color:#4a5560; }
+    #browser-bar .bb-ico svg { width:16px; height:16px; fill:currentColor; }
     #browser-bar .bb-item.active .bb-ico { background:#5b9bd5; border-color:#5b9bd5; color:#fff; }
     #browser-bar .bb-label { white-space:nowrap; opacity:0; transition:opacity .12s ease .08s; }
     #browser-bar:hover .bb-label { opacity:1; }
@@ -28,8 +29,8 @@
     <div class="bb-tabs" id="bb-tabs"></div>
     <div class="bb-divider" id="bb-aux-divider" style="display:none;"></div>
     <button class="bb-item" id="bb-aux" style="display:none;">
-        <span class="bb-ico">&#10022;</span>
-        <span class="bb-label">笔记</span>
+        <span class="bb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z"/></svg></span>
+        <span class="bb-label">辅助键</span>
     </button>
 </div>
 
@@ -93,6 +94,13 @@
         document.getElementById('bb-aux').style.display = 'flex';
         document.getElementById('bb-aux-divider').style.display = 'block';
         document.getElementById('bb-aux').addEventListener('click', function() {
+            // 从阅读页进入 → 记忆当前阅读位置（返回时恢复到原处）；reader 页变量已就绪才保存
+            try {
+                if (typeof currentChapter !== 'undefined' && typeof mainEl !== 'undefined') {
+                    sessionStorage.setItem('reader3_ret_' + pageBookId,
+                        JSON.stringify({ idx: currentChapter, scrollTop: mainEl.scrollTop }));
+                }
+            } catch (e) {}
             location.href = '/notes/' + encodeURIComponent(pageBookId);
         });
     }

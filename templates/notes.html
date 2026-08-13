@@ -87,7 +87,7 @@
 
 <div class="notes-wrap">
     <div class="header">
-        <a class="back" href="/read/{{ book_id }}/0">&larr; 返回阅读</a>
+        <a class="back" id="back-link" href="/read/{{ book_id }}/0">&larr; 返回阅读</a>
         <h1>{{ book_title }}</h1>
         <span class="status" id="page-status"></span>
     </div>
@@ -485,6 +485,18 @@ if (CHAPTERS.length > 0) {
     document.getElementById('nb-ch-body').textContent = '（本书没有可展示的章节）';
     document.getElementById('nb-ch-body').classList.add('empty');
 }
+
+// 返回阅读：从阅读页进入时恢复到原章节+滚动位置（sessionStorage 记忆）；无记忆则回封面
+(function initBackLink() {
+    var el = document.getElementById('back-link');
+    if (!el) return;
+    try {
+        var _p = JSON.parse(sessionStorage.getItem('reader3_ret_' + BOOK_ID) || 'null');
+        if (_p && typeof _p.idx === 'number') {
+            el.href = '/read/' + BOOK_ID + '/' + _p.idx + '?rt=1';
+        }
+    } catch (e) {}
+})();
 
 // URL 深链：?level=L2|L3|L4&item=N（弹窗四角星跳转预留入口，直接定位到层级与词条）
 var _initParams = new URLSearchParams(location.search);
