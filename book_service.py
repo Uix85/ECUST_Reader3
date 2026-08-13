@@ -704,10 +704,23 @@ def _get_spine_offsets(book_id: str, book: Book) -> List[int]:
 
 # ── 标题目录缓存 ──
 
+# 空分区/分卷标题页判定：标题形如"第X部分/篇/卷"且无子标题 → 纯标题页（无正文）
+_PART_TITLE_RE = re.compile(r'^第[一二三四五六七八九十百千〇零\d]+[部分篇卷]')
+
+
 def _get_heading_toc(book_id: str, book: Book) -> List[TOCEntry]:
-    """【标题目录缓存】获取带缓存的标题式目录"""
+    """【标题目录缓存】获取带缓存的标题式目录。
+
+    顶级标题中形如"第X部分/篇/卷"且无子标题的分区标题页会被过滤掉
+    （如"第一部分：意识"仅一个 <h1> 无正文），避免目录出现空白章；
+    其标题仍作为下一章正文的一部分展示。
+    """
     if book_id not in _heading_toc_cache:
-        _heading_toc_cache[book_id] = build_heading_based_toc(book)
+        toc = build_heading_based_toc(book)
+        _heading_toc_cache[book_id] = [
+            e for e in toc
+            if not (_PART_TITLE_RE.match((e.title or '').strip()) and not e.children)
+        ]
     return _heading_toc_cache[book_id]
 
 
@@ -763,6 +776,7 @@ def _build_chapters(toc_pages: List[dict]) -> List[dict]:
 
     每章包含：起始页索引、标题、子节列表、有效锚点（用于切片）。
     若章标题无锚点（NCX 条目），则用章内第一个子节的锚点作为切片起点。
+    空分区标题页已在 _get_heading_toc 阶段过滤（见 _PART_TITLE_RE）。
     """
     chapters = []
     current = None

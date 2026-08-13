@@ -109,9 +109,6 @@
         .ch-content mark.semantic-hl { background:transparent; color:inherit; border-bottom:2px solid #4da3d6; padding:0 1px; cursor:pointer; }
         .ch-content mark.semantic-hl.off { border-bottom-color:transparent; }
         .ch-content mark.semantic-hl:hover { background:rgba(77,163,214,.12); }
-        #concept-pop { position:fixed; z-index:300; width:340px; max-width:82vw; background:#fff; border:1px solid #dee2e6; border-radius:8px; box-shadow:0 6px 24px rgba(0,0,0,.12); padding:12px 14px; display:none; font-family:-apple-system,sans-serif; }
-        #concept-pop .cp-title { font-size:.95em; font-weight:bold; color:#1a1a2e; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid #f1f3f5; word-break:break-all; }
-        #concept-pop .cp-body { font-size:.85em; line-height:1.6; color:#495057; max-height:280px; overflow-y:auto; white-space:pre-wrap; word-break:break-word; }
         /* ── 语义层：蓝色下划线 + 段落左侧书签（序号）+ 段落右侧弹窗 ── */
         /* 书签：矩形尾巴(数字) + 三角形尖端(指向正文)，2 倍尺寸；开启=深色，关闭=浅色 */
         .sem-bookmark { position:absolute; left:-66px; display:flex; align-items:center; cursor:pointer; z-index:40; background:transparent; border:none; padding:0; user-select:none; }
@@ -122,8 +119,13 @@
         .sem-bookmark:hover .bm-tri { border-left-color:#74c0fc; }
         .sem-bookmark.active .bm-rect { background:#4da3d6; }
         .sem-bookmark.active .bm-tri { border-left-color:#4da3d6; }
-        /* 语义弹窗：嵌入正文右侧（随选中字段滚动），白底淡蓝边框，可拉伸（无大小边界） */
+        /* 弹窗（概念/语义共用）：白底淡蓝边框，标题栏 + 右上角图钉 + 右下角拉伸（无大小边界） */
         .semantic-pop { position:absolute; z-index:60; width:320px; height:400px; background:#fff; border:1px solid #a5d8ff; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.08); display:flex; flex-direction:column; font-family:-apple-system,sans-serif; font-size:.85em; }
+        .semantic-pop .sp-title { flex-shrink:0; padding:8px 40px 6px 12px; font-weight:bold; color:#1a1a2e; border-bottom:1px solid #eef3f7; font-size:.9em; word-break:break-all; }
+        .semantic-pop .sp-pin { position:absolute; top:8px; right:26px; width:18px; height:18px; cursor:pointer; color:#6c757d; opacity:.5; z-index:2; display:flex; align-items:center; justify-content:center; }
+        .semantic-pop .sp-pin:hover { opacity:1; }
+        .semantic-pop .sp-pin.locked { opacity:1; }
+        .semantic-pop .sp-pin svg { width:13px; height:13px; fill:currentColor; }
         .semantic-pop .sp-body { flex:1; overflow-y:auto; padding:10px 12px; line-height:1.6; color:#2b4a63; white-space:pre-wrap; word-break:break-word; }
         .semantic-pop .sp-resize { position:absolute; right:0; bottom:0; width:18px; height:18px; cursor:nwse-resize; }
         .semantic-pop .sp-resize::after { content:''; position:absolute; right:3px; bottom:3px; width:8px; height:8px; border-right:2px solid #a5d8ff; border-bottom:2px solid #a5d8ff; }
@@ -175,11 +177,6 @@
     <button id="ch-nav-prev" onclick="goChapter(-1)" title="上一章">&#9664;</button>
     <span id="ch-nav-label"></span>
     <button id="ch-nav-next" onclick="goChapter(1)" title="下一章">&#9654;</button>
-</div>
-
-<div id="concept-pop">
-    <div class="cp-title"></div>
-    <div class="cp-body"></div>
 </div>
 
 <script>
@@ -823,9 +820,10 @@ async function loadAuxPage() {
 
 // ═══════════════════════════════════════════════════════
 // 辅助阅读版块（概念层 + 语义层）—— 独立 IIFE 模块 AuxLayer
-// 概念(短≤30字) → concept_layer → 黄底 mark + 悬停弹窗 #concept-pop
-// 语义(长>30字) → semantic_layer → 蓝下划线 mark + 段落左侧书签(序号/×) + 段落右侧弹窗
-// 记忆：选中即写 layer（当前为固定填充物），再选同文本直接命中；× 删除即删记忆。
+// 概念(短≤30字) → concept_layer → 黄底 mark + 每词独立弹窗
+// 语义(长>30字) → semantic_layer → 蓝下划线 mark + 书签 + 段落右侧弹窗
+// 弹窗统一：标题 + 图钉锁定 + 点击置顶 + 悬停显示/移开自动关闭 + 可拉伸
+// 记忆：选中即写 layer（当前为固定填充物），再选同文本直接命中。
 // 后续专门的"辅助阅读"版块可在此命名空间上扩展/复写词条。
 // ═══════════════════════════════════════════════════════
 var AuxLayer = (function() {
@@ -833,9 +831,9 @@ var AuxLayer = (function() {
     var _semanticBookmarkId = 0;     // 书签自增序号（显示在书签上）
     var _popResize = null;           // 弹窗拉伸状态 {pop, sx, sy, sw, sh}
 
-    var conceptPop = document.getElementById('concept-pop');
-    var conceptPopTimer = null;
     var CONCEPT_ON = false;          // 辅助阅读模式开关
+    var _popZ = 60;                  // 弹窗 z-index 计数（点击置顶，概念/语义共用）
+    var _popCloseDelay = 400;        // 弹窗自动关闭延迟（从 mark 移到弹窗的缓冲，概念/语义共用）
 
     // ── 开关：关闭只隐藏弹窗，保留已有书签/高亮（与概念层一致，mark 不消失）──
     document.getElementById('concept-toggle').addEventListener('click', function() {
@@ -849,56 +847,134 @@ var AuxLayer = (function() {
         return (text.length <= CONCEPT_MAX_LEN) ? 'concept' : 'semantic';
     }
 
-    // ── 概念弹窗（悬停）──
-    function hideConceptPop() {
-        clearTimeout(conceptPopTimer);
-        conceptPop.style.display = 'none';
+    // ── 弹窗公共装饰：图钉锁定 + 点击置顶 + 悬停保持/离开关闭（概念/语义共用）──
+    function bringToFront(pop) {
+        var cur = parseInt(window.getComputedStyle(pop).zIndex, 10) || 0;
+        if (cur > _popZ) _popZ = cur;   // 吸收外部更高的初始 z
+        pop.style.zIndex = ++_popZ;     // 最后点击的弹窗始终在最上层
     }
-    document.addEventListener('mouseover', function(e) {
-        if (!CONCEPT_ON) return;
-        var m = e.target.closest ? e.target.closest('mark.concept-hl') : null;
-        if (m) showConceptPop(m, e);
-    });
-    document.addEventListener('mouseout', function(e) {
-        var m = e.target.closest ? e.target.closest('mark.concept-hl') : null;
-        if (m) conceptPopTimer = setTimeout(hideConceptPop, 250);
-    });
-    conceptPop.addEventListener('mouseenter', function() { clearTimeout(conceptPopTimer); });
-    conceptPop.addEventListener('mouseleave', hideConceptPop);
+    function wirePopChrome(pop, st) {
+        var pin = pop.querySelector('.sp-pin');
+        if (pin) {
+            pin.innerHTML = LOCK_ICON_UNPIN;
+            pin.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var locked = !st.getLocked();
+                st.setLocked(locked);
+                pin.classList.toggle('locked', locked);
+                pin.innerHTML = locked ? LOCK_ICON_PIN : LOCK_ICON_UNPIN;
+            });
+        }
+        pop.addEventListener('mousedown', function() { bringToFront(pop); });
+        pop.addEventListener('mouseenter', function() { if (st.clearTimer) st.clearTimer(); });
+        pop.addEventListener('mouseleave', function() { if (st.onLeave) st.onLeave(); });
+    }
+
+    // 统一弹窗创建（概念/语义共用）：标题栏 + 图钉 + 置顶 + 拉伸 + 悬停保持/关闭
+    function createLayerPop(mark, opts) {
+        var view = document.getElementById('chapter-view');
+        var pop = document.createElement('div');
+        pop.className = 'semantic-pop';
+        pop.innerHTML = '<div class="sp-title"></div>' +
+                        '<div class="sp-pin" title="锁定/解锁（锁定后移开不关闭）"></div>' +
+                        '<div class="sp-body">加载中…</div>' +
+                        '<div class="sp-resize" title="拖动调整大小"></div>';
+        view.appendChild(pop);
+        if (opts.title) pop.querySelector('.sp-title').textContent = opts.title;
+        else pop.querySelector('.sp-title').style.display = 'none';
+        opts.setLocked(false);
+        wirePopChrome(pop, {
+            getLocked: opts.getLocked,
+            setLocked: opts.setLocked,
+            clearTimer: opts.clearTimer,
+            onLeave: opts.onLeave
+        });
+        var rs = pop.querySelector('.sp-resize');
+        rs.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            // 不 stopPropagation → 冒泡到 pop 触发置顶
+            _popResize = { pop: pop, sx: e.clientX, sy: e.clientY, sw: pop.offsetWidth, sh: pop.offsetHeight };
+            document.body.style.cursor = 'nwse-resize';
+        });
+        if (opts.onContent) opts.onContent(pop);
+        return pop;
+    }
 
     // 公共 layer 请求（概念/语义共用，节省重复 fetch 代码）
     function layerGet(seg, query) {
         return fetch('/api/layer/' + seg + '/' + BOOK_ID + '?' + query).then(function(r) { return r.json(); });
     }
 
-    async function showConceptPop(mark, e) {
+    // ── 概念层：每词一独立弹窗（hover 显示 / 移开自动关闭 / 图钉锁定 / 点击置顶）──
+    function initConceptMark(mark) {
+        mark._locked = false;
+        mark._pop = createLayerPop(mark, {
+            title: mark.getAttribute('data-term') || '',
+            getLocked: function() { return mark._locked; },
+            setLocked: function(v) { mark._locked = v; },
+            clearTimer: function() { if (mark._cTimer) { clearTimeout(mark._cTimer); mark._cTimer = null; } },
+            onLeave: function() { scheduleConceptClose(mark); },
+            onContent: function(pop) { loadConceptContent(mark, pop); }
+        });
+        mark._pop.style.display = 'none';   // 初始隐藏，hover 时显示
+    }
+    async function loadConceptContent(mark, pop) {
         var term = mark.getAttribute('data-term') || '';
-        clearTimeout(conceptPopTimer);
         try {
             var data = await layerGet('concept', 'term=' + encodeURIComponent(term));
-            if (!CONCEPT_ON) return;
-            conceptPop.querySelector('.cp-title').textContent = data.term || term;
-            conceptPop.querySelector('.cp-body').textContent = data.content || '（暂无内容）';
-            conceptPop.style.visibility = 'hidden';
-            conceptPop.style.display = 'block';
-            var pw = conceptPop.offsetWidth, ph = conceptPop.offsetHeight;
-            conceptPop.style.visibility = '';
-            var rect = mark.getBoundingClientRect();
-            var left = rect.right + 12;
-            if (left + pw > window.innerWidth - 8) left = Math.max(8, rect.left - pw - 12);
-            var top = rect.top - 8;
-            if (top + ph > window.innerHeight - 8) top = Math.max(8, window.innerHeight - ph - 8);
-            conceptPop.style.left = left + 'px';
-            conceptPop.style.top = top + 'px';
-            conceptPop.style.display = 'block';
+            if (mark._pop !== pop) return;
+            pop.querySelector('.sp-body').textContent = data.content || '（暂无内容）';
+            saveConceptMemo(term);          // 选中即写入记忆
         } catch (err) { console.error('概念层请求失败', err); }
     }
+    function showConceptPop(mark) {
+        var pop = mark._pop;
+        if (!pop) return;
+        if (mark._cTimer) { clearTimeout(mark._cTimer); mark._cTimer = null; }
+        positionConceptPop(pop, mark);
+        pop.style.display = 'flex';
+    }
+    function scheduleConceptClose(mark) {
+        var pop = mark._pop;
+        if (!pop || mark._locked) return;
+        if (mark._cTimer) clearTimeout(mark._cTimer);
+        mark._cTimer = setTimeout(function() {
+            if (mark._locked) return;
+            pop.style.display = 'none';
+        }, _popCloseDelay);
+    }
+    // 概念弹窗定位：紧贴词右侧（absolute 相对 chapter-view，随滚动），装不下放左侧
+    function positionConceptPop(pop, mark) {
+        var view = document.getElementById('chapter-view');
+        var vRect = view.getBoundingClientRect();
+        var mRect = mark.getBoundingClientRect();
+        var left = mRect.right - vRect.left + 12;
+        var top = mRect.top - vRect.top - 6;
+        if (left + 320 > vRect.width) left = mRect.left - vRect.left - 320 - 12;
+        pop.style.left = left + 'px';
+        pop.style.top = top + 'px';
+    }
+
+    // ── 统一悬停委托：概念/语义 mark ──
+    document.addEventListener('mouseover', function(e) {
+        if (!CONCEPT_ON) return;
+        var m = e.target.closest ? e.target.closest('mark.concept-hl, mark.semantic-hl') : null;
+        if (!m) return;
+        if (m.classList.contains('semantic-hl')) showSemanticPop(m._bookmark);
+        else showConceptPop(m);
+    });
+    document.addEventListener('mouseout', function(e) {
+        var m = e.target.closest ? e.target.closest('mark.concept-hl, mark.semantic-hl') : null;
+        if (!m) return;
+        if (m.classList.contains('semantic-hl')) scheduleSemanticClose(m._bookmark);
+        else scheduleConceptClose(m);
+    });
 
     // ── 选中高亮 ──
     document.getElementById('ch-content').addEventListener('mouseup', function(e) {
         if (!CONCEPT_ON) return;
-        if (e.target.closest && (e.target.closest('mark') || e.target.closest('#concept-pop') ||
-            e.target.closest('.sem-bookmark') || e.target.closest('.semantic-pop'))) return;
+        if (e.target.closest && (e.target.closest('mark') || e.target.closest('.sem-bookmark') ||
+            e.target.closest('.semantic-pop'))) return;
         setTimeout(applyHighlight, 0);
     });
 
@@ -910,6 +986,9 @@ var AuxLayer = (function() {
         if (!content.contains(range.commonAncestorContainer)) return;
         var text = sel.toString().trim();
         if (text.length < 1 || text.length > 2000) return;   // 过短不处理；上限 2000 防误选整页
+        // 跨段选区不处理：inline <mark> 无法合法包裹块级元素（<p>/<div>），
+        // extractContents 降级会生成被浏览器拆分的无效 DOM → 正文空白
+        if (rangeCrossesBlocks(range, content)) return;
         var kind = classifySelection(text);
         var mark = document.createElement('mark');
         mark.className = (kind === 'concept') ? 'concept-hl' : 'semantic-hl';
@@ -930,8 +1009,29 @@ var AuxLayer = (function() {
         if (kind === 'semantic') {
             addSemanticBookmark(mark);   // 语义：书签 + 自动弹窗
         } else {
-            saveConceptMemo(text);       // 概念：选中即写入记忆
+            initConceptMark(mark);       // 概念：每词一独立弹窗（hover 显示）
+            saveConceptMemo(text);       // 选中即写入记忆
         }
+    }
+
+    // 选区是否跨越多个块级元素（段落级）：inline <mark> 只能包裹同一块内的内容
+    function rangeCrossesBlocks(range, content) {
+        function blockOf(node) {
+            var el = (node.nodeType === 1) ? node : node.parentNode;
+            while (el && el !== content && el !== document.body) {
+                var t = el.tagName;
+                if (t === 'P' || t === 'DIV' || t === 'H1' || t === 'H2' || t === 'H3' ||
+                    t === 'H4' || t === 'H5' || t === 'H6' || t === 'LI' || t === 'BLOCKQUOTE' ||
+                    t === 'SECTION' || t === 'TR') return el;
+                el = el.parentNode;
+            }
+            return null;
+        }
+        var sb = blockOf(range.startContainer);
+        var eb = blockOf(range.endContainer);
+        if (sb && eb) return sb !== eb;
+        // 任一端定位不到块（悬在 content 直接子级）→ 保守按跨段处理
+        return range.startContainer !== range.endContainer;
     }
 
     // ── 语义：书签（序号 + ×删除 + 深浅色开关）→ 段落右侧弹窗 ──
@@ -948,11 +1048,16 @@ var AuxLayer = (function() {
                        '<span class="bm-tri"></span>';
         bm.addEventListener('click', function(e) {
             e.stopPropagation();
-            toggleSemanticPop(bm);
+            showSemanticPop(bm);   // 点击 = 显示（与悬停一致）
         });
-        // 悬停书签 → 临时显现下划线
-        bm.addEventListener('mouseenter', function() { mark.classList.remove('off'); });
-        bm.addEventListener('mouseleave', function() { if (!bm._on) mark.classList.add('off'); });
+        // 悬停书签 → 显示弹窗 + 取消自动关闭；移开 → 调度关闭
+        bm.addEventListener('mouseenter', function() {
+            clearTimeout(bm._closeTimer);
+            showSemanticPop(bm);
+        });
+        bm.addEventListener('mouseleave', function() {
+            scheduleSemanticClose(bm);
+        });
         view.appendChild(bm);
         mark._bookmark = bm;
         bm._mark = mark;
@@ -977,43 +1082,47 @@ var AuxLayer = (function() {
         }
     }
 
-    // 书签开关：开启=深色+下划线保持+弹窗显示；关闭=浅色+下划线隐藏+弹窗隐藏
-    function toggleSemanticPop(bm) {
-        bm._on = !bm._on;
-        bm.classList.toggle('active', bm._on);
-        bm._mark.classList.toggle('off', !bm._on);
+    // ── 语义弹窗显示/关闭（悬停驱动 + 图钉锁定）──
+    function showSemanticPop(bm) {
+        if (!bm) return;
+        if (bm._closeTimer) { clearTimeout(bm._closeTimer); bm._closeTimer = null; }
+        bm._on = true;
+        bm.classList.add('active');
+        if (bm._mark) bm._mark.classList.remove('off');   // 开启 → 下划线保持
         if (bm._pop) {
-            if (bm._on) {
-                positionSemantic(bm, bm._mark);
-                bm._pop.style.display = 'flex';
-                loadPopContent(bm);
-            } else {
-                bm._pop.style.display = 'none';
-            }
+            positionSemantic(bm, bm._mark);
+            bm._pop.style.display = 'flex';
+            loadPopContent(bm, bm._pop);
         }
     }
-
-    // 弹窗：段落右侧，白底淡蓝边框，右下角可拉伸（无大小边界）
-    function createPop(bm, mark) {
-        var view = document.getElementById('chapter-view');
-        var pop = document.createElement('div');
-        pop.className = 'semantic-pop';
-        pop.innerHTML = '<div class="sp-body">加载中…</div><div class="sp-resize" title="拖动调整大小"></div>';
-        view.appendChild(pop);
-        bm._pop = pop;
-        positionSemantic(bm, mark);
-        var rs = pop.querySelector('.sp-resize');
-        rs.addEventListener('mousedown', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            _popResize = { pop: pop, sx: e.clientX, sy: e.clientY, sw: pop.offsetWidth, sh: pop.offsetHeight };
-            document.body.style.cursor = 'nwse-resize';
-        });
-        loadPopContent(bm);
+    function hideSemanticPop(bm) {
+        if (!bm || bm._locked) return;                    // 锁定后不自动关闭
+        bm._on = false;
+        bm.classList.remove('active');
+        if (bm._mark) bm._mark.classList.add('off');      // 关闭 → 下划线隐藏
+        if (bm._pop) bm._pop.style.display = 'none';
+    }
+    function scheduleSemanticClose(bm) {
+        if (!bm || bm._locked) return;
+        if (bm._closeTimer) clearTimeout(bm._closeTimer);
+        bm._closeTimer = setTimeout(function() { hideSemanticPop(bm); }, _popCloseDelay);
     }
 
-    async function loadPopContent(bm) {
-        var pop = bm._pop;
+    // 语义弹窗：段落右侧，白底淡蓝边框，标题(序号) + 图钉 + 拉伸（与概念弹窗共用 createLayerPop）
+    function createPop(bm, mark) {
+        bm._locked = false;
+        bm._pop = createLayerPop(mark, {
+            title: '语义 · ' + bm.getAttribute('data-id'),
+            getLocked: function() { return bm._locked; },
+            setLocked: function(v) { bm._locked = v; },
+            clearTimer: function() { clearTimeout(bm._closeTimer); },
+            onLeave: function() { scheduleSemanticClose(bm); },
+            onContent: function(pop) { loadPopContent(bm, pop); }
+        });
+        positionSemantic(bm, mark);
+    }
+
+    async function loadPopContent(bm, pop) {
         var term = bm.getAttribute('data-term') || '';
         try {
             var data = await layerGet('semantic', 'text=' + encodeURIComponent(term));
@@ -1058,7 +1167,6 @@ var AuxLayer = (function() {
     // 仅隐藏所有弹窗（关闭开关用）：书签/高亮保留，并同步为“关闭”态（浅色/无下划线），
     // 避免“深色书签却无弹窗”的不一致；重开开关后点书签一次即可重新展开
     function hidePopsOnly() {
-        hideConceptPop();
         document.querySelectorAll('.semantic-pop').forEach(function(p) { p.style.display = 'none'; });
         document.querySelectorAll('.sem-bookmark').forEach(function(b) {
             b._on = false;
@@ -1067,9 +1175,8 @@ var AuxLayer = (function() {
         });
     }
 
-    // ── 换章清理（整章离开：书签/弹窗/高亮全清）──
+    // ── 换章清理（整章离开：弹窗/书签全清；概念/语义弹窗都是 .semantic-pop）──
     function reset() {
-        hideConceptPop();
         document.querySelectorAll('.semantic-pop').forEach(function(p) { p.remove(); });
         document.querySelectorAll('.sem-bookmark').forEach(function(b) { b.remove(); });
         _semanticBookmarkId = 0;
