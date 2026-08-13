@@ -179,7 +179,6 @@
 var BOOK_ID = {{ book_id | tojson }};
 var CHAPTERS = {{ chapters | tojson }};   // [{idx, title, spine_order}]
 var current = null;                       // 当前选中章 {idx, title, spine_order}
-var _editing = null;                      // 正在编辑的面板: 'book' | 'chapter' | null
 
 // ═══════════════════════════════════════════════
 // 四层级切换 + 滚动交互预留
@@ -326,7 +325,6 @@ function enterEdit(kind) {
     editor.style.display = 'block';
     actions.style.display = 'flex';
     editBtn.style.display = 'none';
-    _editing = kind;
     editor.focus();
 }
 
@@ -351,7 +349,6 @@ function exitEdit(kind, save) {
     editor.style.display = 'none';
     actions.style.display = 'none';
     editBtn.style.display = '';
-    _editing = null;
 }
 
 async function savePanel(kind) {

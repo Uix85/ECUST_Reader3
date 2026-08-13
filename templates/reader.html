@@ -156,7 +156,7 @@
         <div class="ch-title-bar" id="ch-title-bar">
             <span id="ch-title">{{ chapter_title }}</span>
             <button id="aux-toggle" title="笔记界面（全书层 / 章节层）">&#10022;</button>
-            <button id="concept-toggle" title="辅助阅读：选中短词→概念弹窗，选中长句/段→两侧语义面板">
+            <button id="concept-toggle" title="解释笔：开启后选中文本划词（长句/段 → 语义，短词 → 概念）">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
             </button>
         </div>
@@ -571,13 +571,105 @@ function goChapter(delta) {
     loadChapter(next, delta > 0 ? 'top' : 'bottom');
 }
 
+// ── 章节 DOM 缓存（放弃“换章即销毁”：已访问的章保留 DOM，切回原样恢复）──
+// 换章只把当前章正文 DOM 移入隐藏容器，不销毁（高亮 mark 原样保留）；
+// 书签/弹窗切走销毁、切回从 mark 重建（锚定 mark，杜绝跨章覆盖）。
+// 回到已访问章直接原样放回（零 fetch），仅缓存超限(LRU)才真正销毁。
+var _chCache = {};          // idx -> { title, scrollTop, nodes:[] }
+var _chCacheMax = 8;        // LRU 上限：超过才销毁最久未访问的章（下次走 fetch+restore 重建）
+var _chCacheOrder = [];     // 最近访问顺序（尾部最新）
+var _chCacheHolder = null;
+
+function _cacheHolder() {
+    if (!_chCacheHolder) {
+        _chCacheHolder = document.createElement('div');
+        _chCacheHolder.style.display = 'none';
+        document.body.appendChild(_chCacheHolder);
+    }
+    return _chCacheHolder;
+}
+
+// 离开某章：正文节点移入缓存容器（保留 mark/内容，不销毁）。
+// 书签/弹窗不缓存：切走即销毁，切回时从正文 mark 重建（始终锚定 mark，
+// 杜绝 aux 数组跨章污染导致旧章 UI 覆盖在新章上）。
+function stashChapter(idx) {
+    if (idx === undefined || idx === null || idx < 0) return;
+    var content = document.getElementById('ch-content');
+    var holder = _cacheHolder();
+    var nodes = [];
+    while (content.firstChild) nodes.push(content.removeChild(content.firstChild));
+    document.querySelectorAll('.sem-bookmark, .semantic-pop').forEach(function(el) { el.remove(); });
+    _chCache[idx] = {
+        title: document.getElementById('ch-title').textContent,
+        scrollTop: mainEl.scrollTop,
+        nodes: nodes
+    };
+    nodes.forEach(function(n) { holder.appendChild(n); });
+    // LRU：本项移到尾部，超限销毁最久未访问项
+    _chCacheOrder = _chCacheOrder.filter(function(i) { return i !== idx; });
+    _chCacheOrder.push(idx);
+    while (_chCacheOrder.length > _chCacheMax) {
+        var old = _chCacheOrder.shift();
+        var oc = _chCache[old];
+        if (oc) {
+            oc.nodes.forEach(function(n) { n.remove(); });
+            delete _chCache[old];
+        }
+    }
+}
+
+// 回到某章：正文从缓存原样恢复（高亮 mark / 滚动位置全保留），
+// 书签/弹窗从 mark 重建（锚定 mark，滚动与切章都跟随）；未缓存返回 false
+function unstashChapter(idx, scrollTo, anchor) {
+    var cache = _chCache[idx];
+    if (!cache) return false;
+    var content = document.getElementById('ch-content');
+    cache.nodes.forEach(function(n) { content.appendChild(n); });
+    document.getElementById('ch-title').textContent = cache.title;
+    _chCacheOrder = _chCacheOrder.filter(function(i) { return i !== idx; });
+    _chCacheOrder.push(idx);
+    // 同步设置滚动（先强制 reflow：appendChild 后需刷新布局，scrollHeight 才反映新章节）
+    mainEl.style.scrollBehavior = 'auto';
+    _highlightSuppress = true;
+    void mainEl.offsetHeight;   // 强制 reflow
+    if (anchor) {
+        requestAnimationFrame(function() { scrollToSection(anchor); _highlightSuppress = false; AuxLayer.restoreFromDom(); });
+    } else {
+        if (scrollTo === 'bottom') mainEl.scrollTop = mainEl.scrollHeight;
+        else if (scrollTo === 'top') mainEl.scrollTop = 0;
+        else mainEl.scrollTop = cache.scrollTop;   // 无明确意图 → 恢复离开位置
+        AuxLayer.restoreFromDom();   // 从放回的 mark 重建书签/弹窗（滚动已就位，位置锚定 mark）
+    }
+    requestAnimationFrame(function() {
+        _autoCollapseArmed = false;   // 切回瞬间不自动折叠
+        _prevAnchor = null;  // 切回重置“上一次 active”
+        computeRanges();
+        updateHighlight();
+        mainEl.style.scrollBehavior = 'smooth';
+        _highlightSuppress = false;
+    });
+    return true;
+}
+
 async function loadChapter(idx, scrollTo, anchor) {
     if (idx < 0 || idx >= TOTAL) return;
     chLock = true;
+    var prevIdx = currentChapter;
     currentChapter = idx;
     history.replaceState(null, '', '/read/' + BOOK_ID + '/' + idx);
     expandCurrentChapter(idx);
 
+    // 先把当前章 DOM 移入缓存（保证 ch-content 清空，避免新旧内容叠加）
+    stashChapter(prevIdx);
+
+    // 缓存命中：直接原样恢复（不 fetch、不重建）
+    if (unstashChapter(idx, scrollTo, anchor)) {
+        updateNavLabel();
+        chLock = false;
+        return;
+    }
+
+    // 未命中：整章加载（fetch 失败时旧章已缓存，可回滚放回）
     var loadEl = document.getElementById('ch-loading');
     var timer = setTimeout(function() { loadEl.style.display = 'block'; }, 200);
     try {
@@ -585,6 +677,7 @@ async function loadChapter(idx, scrollTo, anchor) {
         var data = await resp.json();
         document.getElementById('ch-title').textContent = data.title;
         document.getElementById('ch-content').innerHTML = data.html;
+        AuxLayer.prepareNewChapter();   // 新章：重置防重集合/书签序号
         // 等浏览器完成布局后再计算锚点位置
         requestAnimationFrame(function() {
             _autoCollapseArmed = false;  // 加载瞬间不自动折叠
@@ -601,7 +694,15 @@ async function loadChapter(idx, scrollTo, anchor) {
             requestAnimationFrame(function() { mainEl.style.scrollBehavior = 'smooth'; _highlightSuppress = false; });
         }
         updateNavLabel();
-    } catch(e) { console.error(e); }
+        AuxLayer.restore();   // 新章内容加载后恢复已记录的高亮/书签
+    } catch(e) {
+        console.error(e);
+        // 加载失败：旧章已 stash，回滚章节状态并放回旧章 DOM（恢复离开位置）
+        currentChapter = prevIdx;
+        history.replaceState(null, '', '/read/' + BOOK_ID + '/' + prevIdx);
+        expandCurrentChapter(prevIdx);
+        if (unstashChapter(prevIdx)) updateNavLabel();
+    }
     finally { clearTimeout(timer); loadEl.style.display = 'none'; chLock = false; }
 }
 
@@ -755,18 +856,18 @@ var AuxLayer = (function() {
     var _popResize = null;           // 弹窗拉伸状态 {pop, sx, sy, sw, sh}
     var _popDrag = null;             // 弹窗拖动状态 {pop, sx, sy, lx, ty}
 
-    var CONCEPT_ON = false;          // 辅助阅读模式开关
+    var CONCEPT_ON = false;          // 解释笔（划词）开关
     var _popZ = 500;                 // 弹窗 z-index 计数（点击置顶，概念/语义共用）
     var _popCloseDelay = 400;        // 弹窗自动关闭延迟（从 mark 移到弹窗的缓冲，概念/语义共用）
     var _semListCache = null;        // 语义 list 缓存（首次拉取后复用，换章不重复请求）
     var _conListCache = null;        // 概念 list 缓存
     var _restoredSources = {};       // 已恢复 source 集合（防并发/重复包裹）
 
-    // ── 开关：关闭只隐藏弹窗，保留已有书签/高亮（与概念层一致，mark 不消失）──
+    // ── 解释笔开关：只控制“划词”（选中文本 → 生成语义/概念标记）。
+    // 弹窗显示是独立逻辑（mark 存在即 hover/点击可看），不受本开关影响。──
     document.getElementById('concept-toggle').addEventListener('click', function() {
         CONCEPT_ON = !CONCEPT_ON;
         this.classList.toggle('active', CONCEPT_ON);
-        if (!CONCEPT_ON) hidePopsOnly();
     });
 
     // ── 概念/语义 分流器（可拆卸插件）──
@@ -922,9 +1023,8 @@ var AuxLayer = (function() {
         pop.style.top = t + 'px';
     }
 
-    // ── 统一悬停委托：概念/语义 mark ──
+    // ── 统一悬停委托：概念/语义 mark（弹窗独立于解释笔开关，mark 存在即响应）──
     document.addEventListener('mouseover', function(e) {
-        if (!CONCEPT_ON) return;
         var m = e.target.closest ? e.target.closest('mark.concept-hl, mark.semantic-hl') : null;
         if (!m) return;
         if (m.classList.contains('semantic-hl')) showSemanticPop(m._bookmark);
@@ -1020,7 +1120,7 @@ var AuxLayer = (function() {
         bm.addEventListener('mouseenter', function() { clearTimeout(bm._closeTimer); showSemanticPop(bm); });
         bm.addEventListener('mouseleave', function() { scheduleSemanticClose(bm); });
         view.appendChild(bm);
-        mark._bookmark = bm; bm._mark = mark; bm._on = true;
+        mark._bookmark = bm; bm._mark = mark;
         positionSemantic(bm, mark);
         createPop(bm, mark, autoPop !== false);
         return bm;
@@ -1053,7 +1153,6 @@ var AuxLayer = (function() {
     function showSemanticPop(bm) {
         if (!bm) return;
         if (bm._closeTimer) { clearTimeout(bm._closeTimer); bm._closeTimer = null; }
-        bm._on = true;
         bm.classList.add('active');
         if (bm._mark) bm._mark.classList.remove('off');   // 开启 → 下划线保持
         if (bm._pop) {
@@ -1064,7 +1163,6 @@ var AuxLayer = (function() {
     }
     function hideSemanticPop(bm) {
         if (!bm || bm._locked) return;                    // 锁定后不自动关闭
-        bm._on = false;
         bm.classList.remove('active');
         if (bm._mark) bm._mark.classList.add('off');      // 关闭 → 下划线隐藏
         if (bm._pop) bm._pop.style.display = 'none';
@@ -1143,24 +1241,47 @@ var AuxLayer = (function() {
           .catch(function() {});
     }
 
-    // 仅隐藏所有弹窗（关闭开关用）：书签/高亮保留，并同步为“关闭”态（浅色/无下划线），
-    // 避免“深色书签却无弹窗”的不一致；重开开关后点书签一次即可重新展开
-    function hidePopsOnly() {
-        document.querySelectorAll('.semantic-pop').forEach(function(p) { p.style.display = 'none'; });
-        document.querySelectorAll('.sem-bookmark').forEach(function(b) {
-            b._on = false;
-            b.classList.remove('active');
-            if (b._mark) b._mark.classList.add('off');
-        });
-    }
 
-    // ── 换章清理（整章离开：弹窗/书签全清；概念/语义弹窗都是 .semantic-pop）──
-    function reset() {
-        document.querySelectorAll('.semantic-pop').forEach(function(p) { p.remove(); });
-        document.querySelectorAll('.sem-bookmark').forEach(function(b) { b.remove(); });
+
+    // ── 换到全新章：旧章书签/弹窗已随 stash 移入缓存容器（不销毁），
+    // 这里只需重置章节级状态（书签序号、防重集合）──
+    function prepareNewChapter() {
         _semanticBookmarkId = 0;
         _restoredSources = {};   // 新章节内容需重新恢复，清空防重集合
     }
+
+    // ── 缓存切回某章后：书签/弹窗按新布局重新定位（滚动跟随用）──
+    function reposition() {
+        document.querySelectorAll('#ch-content mark').forEach(function(m) {
+            if (m._bookmark) positionSemantic(m._bookmark, m);
+            if (m._pop && m._pop.style.display !== 'none' && !m._pop._userPos) {
+                positionConceptPop(m._pop, m);
+            }
+        });
+    }
+
+    // ── 从当前章 DOM 中现存的 mark 重建书签/弹窗（缓存切回用）──
+    // mark 始终在正文里；切走时书签/弹窗被销毁，切回后据 mark 重建，
+    // 保证它们锚定 mark：页内滚动天然跟随，页跳转后位置也正确。
+    function restoreFromDom() {
+        _semanticBookmarkId = 0;   // 当前章重建，书签序号从 1 开始（每章独立）
+        document.querySelectorAll('#ch-content mark').forEach(function(m) {
+            var kind = m.getAttribute('data-kind') ||
+                       (m.classList.contains('concept-hl') ? 'concept' : 'semantic');
+            if (kind === 'semantic') createSemanticBookmark(m, false);   // 恢复书签，不自动弹窗
+            else initConceptMark(m);
+        });
+    }
+
+    // ── 滚动跟随：书签/弹窗锚定 mark 实时移动（未拖动时随 mark 走）──
+    var _reposRaf = null;
+    mainEl.addEventListener('scroll', function() {
+        if (_reposRaf) return;
+        _reposRaf = requestAnimationFrame(function() {
+            _reposRaf = null;
+            reposition();
+        });
+    }, { passive: true });
 
     // ═══════════════════════════════════════════════════════
     // 记忆恢复：先记录后识别 —— 选中时已把原文(source_text)和所在段落前缀
@@ -1234,6 +1355,8 @@ var AuxLayer = (function() {
         var mark = wrapMarkIn(target, source, kind);
         if (mark) {
             _restoredSources[source] = true;
+            // 补齐锚点：恢复的 mark 也带 data-anchor，弹窗保存时不会把 DB 锚点覆盖成空
+            mark.setAttribute('data-anchor', paraPrefixOf(mark));
             if (kind === 'semantic') createSemanticBookmark(mark, false);   // 恢复：不自动弹窗
             else initConceptMark(mark);   // 概念：恢复弹窗（hover 显示）
         }
@@ -1267,23 +1390,11 @@ var AuxLayer = (function() {
     }
 
     return {
-        isOn: function() { return CONCEPT_ON; },
-        reset: reset,
+        prepareNewChapter: prepareNewChapter,
+        restoreFromDom: restoreFromDom,
         restore: restoreHighlights,
     };
 })();
-
-// ═══════════════════════════════════════════
-// 换章统一清理：书签/弹窗/概念弹窗 一并清除
-// （唯一一处 loadChapter 包装，避免多次包装冲突）
-// ═══════════════════════════════════════════
-var _origLoad = loadChapter;
-loadChapter = function(idx, scrollTo, anchor) {
-    AuxLayer.reset();
-    return _origLoad(idx, scrollTo, anchor).then(function() {
-        AuxLayer.restore();   // 新章内容加载后恢复已记录的高亮/书签
-    });
-};
 
 // 页面加载完成后恢复已记录的高亮/书签（离开页面再回来依然可见）
 setTimeout(function() { AuxLayer.restore(); }, 400);

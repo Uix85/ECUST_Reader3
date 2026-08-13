@@ -745,8 +745,6 @@ def _build_toc_pages(book: Book, heading_toc: List[TOCEntry]) -> List[dict]:
                 'title': e.title,
                 'anchor': e.anchor,
                 'spine_order': spine_order,
-                'depth': depth,
-                'has_children': len(e.children) > 0,
                 '_chapter_start': (depth == 0),
             })
             if e.children:
@@ -788,15 +786,7 @@ def _build_chapters(toc_pages: List[dict]) -> List[dict]:
                 'title': p['title'],
                 'start_page': pi,
                 'anchor': p['anchor'],
-                'sections': [],
             }
-        if not p.get('_chapter_start'):
-            current['sections'].append({
-                'title': p['title'],
-                'anchor': p['anchor'],
-                'page': pi,
-                'depth': p['depth'],
-            })
     if current:
         chapters.append(current)
     return chapters
@@ -1039,7 +1029,6 @@ def _load_book_from_sqlite(folder_name: str) -> Optional[Book]:
         metadata=metadata,
         spine=spine,
         toc=toc,
-        images={},  # Images are served directly from disk, map not needed here
         source_file=row['source_file'] or '',
         processed_at=row['processed_at'],
     )

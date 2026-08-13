@@ -18,7 +18,6 @@ from fastapi.templating import Jinja2Templates
 
 from models import Book
 from reader3 import process_epub_to_sqlite
-from schema import get_db
 from book_service import (
     BOOKS_DIR,
     load_book_cached,
@@ -55,34 +54,10 @@ async def library_view(request: Request):
             if item.endswith("_data") and os.path.isdir(os.path.join(BOOKS_DIR, item)):
                 book = load_book_cached(item)
                 if book:
-                    # 从 SQLite 读取更丰富的统计信息
-                    db_path = os.path.join(BOOKS_DIR, item, "book.db")
-                    total_paras = 0
-                    total_chaps = len(book.spine)
-                    if os.path.exists(db_path):
-                        try:
-                            db = get_db(db_path)
-                            row = db.execute("SELECT total_chaps, total_paras FROM books LIMIT 1").fetchone()
-                            if row:
-                                total_chaps = row['total_chaps'] or total_chaps
-                                total_paras = row['total_paras'] or 0
-                        except Exception:
-                            pass
-
-                    # 计算 TOC 页数（标题目录中的条目数）
-                    try:
-                        toc_pages = _get_toc_pages(item, book)
-                        page_count = len(toc_pages)
-                    except Exception:
-                        page_count = total_chaps
-
                     books.append({
                         "id": item,
                         "title": book.metadata.title,
                         "author": ", ".join(book.metadata.authors),
-                        "chapters": total_chaps,
-                        "paras": total_paras,
-                        "pages": page_count,
                     })
 
     return templates.TemplateResponse(request, "library.html", {"books": books})
@@ -117,9 +92,10 @@ async def upload_epub(file: UploadFile = File(...)):
 
         # Get book info from the new DB
         folder = os.path.basename(out_dir)
-        book = load_book_cached(folder)
-        # 只清理该书缓存（不影响其他书的缓存命中）
+        # 先清旧缓存（同名重复上传时避免残留指向已删除的旧 DB），再加载新书，
+        # 让新书缓存立即生效：用户首次打开这本书直接命中，无需重新构建。
         clear_book_caches(folder)
+        book = load_book_cached(folder)
 
         return JSONResponse({
             "success": True,
@@ -214,7 +190,6 @@ async def api_full_chapter(book_id: str, chapter_idx: int):
         "chapter_idx": chapter_idx,
         "title": ch['title'],
         "html": html,
-        "sections": ch['sections'],
         "total_chapters": len(chapters),
     })
 

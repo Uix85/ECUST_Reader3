@@ -131,18 +131,3 @@ def get_db(db_path: str) -> sqlite3.Connection:
             conn.commit()
             _connections[key] = conn
         return _connections[key]
-
-def close_db(db_path: str):
-    """Close and remove a connection from the pool."""
-    key = os.path.abspath(db_path)
-    with _lock:
-        conn = _connections.pop(key, None)
-        if conn:
-            conn.close()
-
-def close_all():
-    """Close all connections in the pool."""
-    with _lock:
-        for conn in _connections.values():
-            conn.close()
-        _connections.clear()

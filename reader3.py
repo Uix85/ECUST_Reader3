@@ -18,11 +18,7 @@ import ebooklib
 from ebooklib import epub
 from bs4 import BeautifulSoup, Comment
 
-from models import Book, TOCEntry, BookMetadata, ChapterContent  # noqa: F401 (re-export)
-
-__all__ = [
-    "Book", "TOCEntry", "BookMetadata", "ChapterContent",
-]
+from models import TOCEntry, BookMetadata
 
 
 # --- Utilities ---
@@ -340,22 +336,11 @@ def process_epub_to_sqlite(epub_path: str, books_dir: str = "books") -> str:
                 ch_title = t.title
                 break
         
-        # Heading tree for this chapter
-        heading_json = '[]'
-        try:
-            soup_h = BeautifulSoup(final_html, 'html.parser')
-            h_tags = soup_h.find_all(['h1','h2','h3','h4','h5','h6'])
-            if h_tags:
-                htree = [{'level': int(h.name[1]), 'text': h.get_text(strip=True)} for h in h_tags]
-                heading_json = json.dumps(htree, ensure_ascii=False)
-        except:
-            pass
-        
-        # Insert chapter
+        # Insert chapter（heading_json 列为预留字段，恒写空数组，服务端不读取）
         db.execute(
             "INSERT INTO chapters (book_id, spine_order, href, title, content_html, content_text, heading_json) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (book_id, i, item.get_name(), ch_title, final_html, full_text_clean, heading_json)
+            (book_id, i, item.get_name(), ch_title, final_html, full_text_clean, '[]')
         )
         chapter_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
         

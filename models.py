@@ -3,7 +3,7 @@
 """
 
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional
+from typing import List, Optional
 
 
 @dataclass
@@ -49,9 +49,7 @@ class Book:
     metadata: BookMetadata
     spine: List[ChapterContent]  # The actual content (linear files)
     toc: List[TOCEntry]          # The navigation tree
-    images: Dict[str, str]       # Map: original_path -> local_path
 
     # Meta info
     source_file: str
     processed_at: str
-    version: str = "3.0"

@@ -42,6 +42,7 @@ def _book_db(book_id: str):
 async def get_book_layer(book_id: str):
     """【全书层API】L1：查询 book_layer 全书层内容；无则返回空"""
     db = _book_db(book_id)
+    _ensure_columns(db, "book_layer", {"model_version": "TEXT", "updated_at": "TEXT"})
     row = db.execute(
         "SELECT content, model_version, updated_at FROM book_layer LIMIT 1"
     ).fetchone()
@@ -55,6 +56,7 @@ async def get_book_layer(book_id: str):
 async def get_chapter_layer(book_id: str, chapter_idx: int):
     """【章节层API】L2：按章节索引（spine_order）查询 chapter_layer 内容；无则返回空"""
     db = _book_db(book_id)
+    _ensure_columns(db, "chapter_layer", {"model_version": "TEXT", "updated_at": "TEXT"})
     # 先解析书籍主键（book_id 路由参数是文件夹名，chapters.book_id 是整数外键）
     bk = db.execute("SELECT id FROM books LIMIT 1").fetchone()
     if not bk:
@@ -79,7 +81,7 @@ async def get_chapter_layer(book_id: str, chapter_idx: int):
 async def get_concept(book_id: str, term: str = ""):
     """【概念层API】按词条查询概念层内容；未匹配则返回该书第一条作为填充物"""
     db = _book_db(book_id)
-    _ensure_columns(db, "concept_layer", {"source_text": "TEXT", "anchor_text": "TEXT"})
+    _ensure_columns(db, "concept_layer", {"term": "TEXT", "source_text": "TEXT", "anchor_text": "TEXT"})
     if term:
         row = db.execute("SELECT term, content, source_text, anchor_text FROM concept_layer WHERE term = ? LIMIT 1", (term,)).fetchone()
         if row:
@@ -95,7 +97,7 @@ async def get_concept(book_id: str, term: str = ""):
 async def get_semantic(book_id: str, text: str = ""):
     """【语义层API】按选中文本 MD5 查询语义层内容；未匹配则返回该书第一条作为填充物"""
     db = _book_db(book_id)
-    _ensure_columns(db, "semantic_layer", {"source_text": "TEXT", "anchor_text": "TEXT"})
+    _ensure_columns(db, "semantic_layer", {"text_hash": "TEXT", "source_text": "TEXT", "anchor_text": "TEXT"})
     if text:
         h = _text_hash(text)
         row = db.execute("SELECT content, source_text, anchor_text FROM semantic_layer WHERE text_hash = ? LIMIT 1", (h,)).fetchone()
@@ -278,7 +280,7 @@ async def save_chapter_layer(book_id: str, chapter_idx: int, content: str = Body
 async def list_semantic(book_id: str):
     """【语义层列表】返回该书全部语义层条目（笔记界面 L3 展示 / 阅读页恢复高亮）"""
     db = _book_db(book_id)
-    _ensure_columns(db, "semantic_layer", {"source_text": "TEXT", "anchor_text": "TEXT"})
+    _ensure_columns(db, "semantic_layer", {"text_hash": "TEXT", "source_text": "TEXT", "anchor_text": "TEXT"})
     rows = db.execute(
         "SELECT text_hash, content, source_text, anchor_text FROM semantic_layer ORDER BY id"
     ).fetchall()
@@ -293,7 +295,7 @@ async def list_semantic(book_id: str):
 async def list_concept(book_id: str):
     """【概念层列表】返回该书全部概念层条目（笔记界面 L4 展示 / 阅读页恢复高亮）"""
     db = _book_db(book_id)
-    _ensure_columns(db, "concept_layer", {"source_text": "TEXT", "anchor_text": "TEXT"})
+    _ensure_columns(db, "concept_layer", {"term": "TEXT", "source_text": "TEXT", "anchor_text": "TEXT"})
     rows = db.execute(
         "SELECT term, content, source_text, anchor_text FROM concept_layer ORDER BY id"
     ).fetchall()
