@@ -1,98 +1,60 @@
 {# ═══════════════════════════════════════════════
-   浏览器外壳：左侧悬浮侧边栏（类似浏览器侧边栏）
-   - position:fixed 覆盖层，默认压缩 52px，鼠标移入展开 230px
-   - 层级高于页面内容，展开时覆盖页面左侧
-   - 主页（Library）+ 打开的书标签 + 辅助阅读（reader 页）
-   所有页面（Library/Reader）共用
+   浏览器外壳：左侧固定边栏（固定 52px，不伸缩）
+   - 书库页不引入本文件（书库页无侧边栏）
+   - 阅读页 / 笔记页引入：返回书库 + 阅读工具（仅阅读页显示）
    ═══════════════════════════════════════════════ #}
 <style>
-    #browser-bar { position:fixed; left:0; top:0; bottom:0; width:52px; background:#eceff1; color:#3a3f45; display:flex; flex-direction:column; align-items:stretch; padding:8px 0; overflow:hidden; border-right:1px solid #d5d9dd; z-index:900; transition:width .22s ease; box-shadow:2px 0 8px rgba(0,0,0,.06); }
-    #browser-bar:hover { width:230px; }
-    #browser-bar .bb-item { flex-shrink:0; display:flex; align-items:center; gap:10px; width:230px; padding:0 10px; height:40px; cursor:pointer; background:transparent; border:none; color:#3a3f45; font-family:-apple-system,sans-serif; }
+    #browser-bar { position:fixed; left:0; top:0; bottom:0; width:52px; background:#eceff1; color:#3a3f45; display:flex; flex-direction:column; align-items:stretch; padding:8px 0; overflow:hidden; border-right:1px solid #d5d9dd; z-index:900; box-shadow:2px 0 8px rgba(0,0,0,.06); }
+    #browser-bar .bb-item { flex-shrink:0; display:flex; align-items:center; justify-content:center; width:52px; height:40px; cursor:pointer; background:transparent; border:none; color:#3a3f45; font-family:-apple-system,sans-serif; }
     #browser-bar .bb-item:hover { background:#dde2e6; }
     #browser-bar .bb-item.active { background:#cfe0f0; color:#1a5276; font-weight:600; }
     #browser-bar .bb-ico { flex-shrink:0; width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:bold; background:#fff; border:1px solid #d5d9dd; color:#4a5560; }
     #browser-bar .bb-ico svg { width:16px; height:16px; fill:currentColor; }
     #browser-bar .bb-item.active .bb-ico { background:#5b9bd5; border-color:#5b9bd5; color:#fff; }
-    #browser-bar .bb-label { white-space:nowrap; opacity:0; transition:opacity .12s ease .08s; }
-    #browser-bar:hover .bb-label { opacity:1; }
     #browser-bar .bb-divider { flex-shrink:0; width:32px; height:1px; background:#d5d9dd; margin:6px 10px; }
-    #browser-bar .bb-tabs { flex:1; overflow-y:auto; display:flex; flex-direction:column; align-items:stretch; gap:2px; width:230px; padding:0 0 8px; }
 </style>
 
 <div id="browser-bar">
-    <button class="bb-item" id="bb-home">
-        <span class="bb-ico">L</span>
-        <span class="bb-label">Library</span>
+    <button class="bb-item" id="bb-home" title="返回书库">
+        <span class="bb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></span>
     </button>
-    <div class="bb-divider"></div>
-    <div class="bb-tabs" id="bb-tabs"></div>
-    <div class="bb-divider" id="bb-aux-divider" style="display:none;"></div>
-    <button class="bb-item" id="bb-aux" style="display:none;">
+    <div class="bb-divider" id="bb-reader-divider" style="display:none;"></div>
+    <button class="bb-item" id="bb-toc" style="display:none;" title="目录（展开 / 收起章节目录）">
+        <span class="bb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg></span>
+    </button>
+    <button class="bb-item" id="bb-aux" style="display:none;" title="辅助键（全书层 / 章节层）">
         <span class="bb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z"/></svg></span>
-        <span class="bb-label">辅助键</span>
+    </button>
+    <button class="bb-item" id="bb-concept" style="display:none;" title="解释笔：开启后选中文本划词（长句/段 → 语义，短词 → 概念）">
+        <span class="bb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></span>
     </button>
 </div>
 
 <script>
 // ═══════════════════════════════════════════════
-// 浏览器外壳：悬浮侧边栏（主页 + 打开的书 + 辅助阅读）
-// localStorage 记录打开过的书（reader_browser_tabs）
+// 浏览器外壳：悬浮侧边栏（主页 + 阅读工具：目录 / 辅助键 / 解释笔）
+// 阅读工具仅在 reader 页显示（BROWSER_IS_READER）
 // ═══════════════════════════════════════════════
 (function() {
-    var KEY = 'reader_browser_tabs';
-    var tabsEl = document.getElementById('bb-tabs');
-    if (!tabsEl) return;
-
-    // 当前页面信息：主页 or 某本书（reader 页注入）
     var pageBookId = window.BROWSER_BOOK_ID || null;
     var isHome = !pageBookId;
-
-    function getTabs() {
-        try { return JSON.parse(localStorage.getItem(KEY) || '[]'); }
-        catch (e) { return []; }
-    }
-    function saveTabs(tabs) {
-        try { localStorage.setItem(KEY, JSON.stringify(tabs)); } catch (e) {}
-    }
-
-    // 记录/更新当前书标签（reader 页）
-    if (pageBookId && window.BROWSER_BOOK_TITLE) {
-        var tabs = getTabs();
-        var exists = tabs.find(function(t) { return t.id === pageBookId; });
-        if (exists) exists.title = window.BROWSER_BOOK_TITLE;
-        else tabs.push({ id: pageBookId, title: window.BROWSER_BOOK_TITLE });
-        saveTabs(tabs);
-    }
-
-    // 渲染标签栏
-    function render() {
-        document.getElementById('bb-home').classList.toggle('active', isHome);
-        tabsEl.innerHTML = '';
-        getTabs().forEach(function(t) {
-            var btn = document.createElement('button');
-            btn.className = 'bb-item' + (t.id === pageBookId ? ' active' : '');
-            btn.title = t.title;
-            var initial = t.title.replace(/[《》\s]/g, '').slice(0, 2) || '书';
-            var label = document.createElement('span');
-            label.className = 'bb-label';
-            label.textContent = t.title;
-            var ico = document.createElement('span');
-            ico.className = 'bb-ico';
-            ico.textContent = initial;
-            btn.appendChild(ico);
-            btn.appendChild(label);
-            btn.addEventListener('click', function() { location.href = '/read/' + encodeURIComponent(t.id) + '/0'; });
-            tabsEl.appendChild(btn);
-        });
-    }
+    var isReader = !!window.BROWSER_IS_READER;
 
     document.getElementById('bb-home').addEventListener('click', function() { location.href = '/'; });
+    document.getElementById('bb-home').classList.toggle('active', isHome);
 
-    // 笔记界面入口（仅在 reader 页显示）：点击跳转到该书笔记页（全书层/章节层）
-    if (pageBookId) {
+    // 阅读工具（仅 reader 页显示）：
+    // - 目录 → 展开 / 收起章节目录（reader 页的 toggleSidebar）
+    // - 辅助键 → 跳转该书笔记界面（全书层 / 章节层）
+    // - 解释笔 → 开关划词（由 reader 页 JS 接管，仅切换 active 样式）
+    if (isReader) {
+        document.getElementById('bb-toc').style.display = 'flex';
         document.getElementById('bb-aux').style.display = 'flex';
-        document.getElementById('bb-aux-divider').style.display = 'block';
+        document.getElementById('bb-concept').style.display = 'flex';
+        document.getElementById('bb-reader-divider').style.display = 'block';
+        document.getElementById('bb-toc').addEventListener('click', function() {
+            if (typeof toggleSidebar === 'function') toggleSidebar();
+        });
         document.getElementById('bb-aux').addEventListener('click', function() {
             // 从阅读页进入 → 记忆当前阅读位置（返回时恢复到原处）；reader 页变量已就绪才保存
             try {
@@ -104,6 +66,5 @@
             location.href = '/notes/' + encodeURIComponent(pageBookId);
         });
     }
-    render();
 })();
 </script>

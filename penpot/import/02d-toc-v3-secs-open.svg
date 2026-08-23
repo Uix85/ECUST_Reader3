@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="290" height="1080" viewBox="0 0 290 1080" font-family="'PingFang SC','Microsoft YaHei','Noto Sans CJK SC',sans-serif">
+  <title>02d-toc-v3-secs-open · 变体 V3（第二节+第三节展开）</title>
+  <g id="side-wrap">
+    <rect x="0" y="0" width="290" height="1080" fill="#f8f9fa"/>
+    <line x1="289.5" y1="0" x2="289.5" y2="1080" stroke="#e9ecef"/>
+    <g id="panel-header">
+      <text x="12" y="26" font-size="12.8" font-weight="bold" fill="#868e96" letter-spacing="0.5">目 录</text>
+      <line x1="12" y1="32" x2="278" y2="32" stroke="#dee2e6"/>
+    </g>
+    <g id="toc-tree">
+    <g id="ch" data-title="《当代学术棱镜译丛》总序">
+      <rect x="20" y="53.22" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="53.22" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="20" y="60.22" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="60.22" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <text x="51" y="62" font-size="14.4" fill="#495057">《当代学术棱镜译丛》总序</text>
+    </g>
+    <g id="ch" data-title="目录">
+      <rect x="20" y="88.66" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="88.66" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="20" y="95.66" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="95.66" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <text x="51" y="97.4" font-size="14.4" fill="#495057">目录</text>
+    </g>
+    <g id="ch" data-title="导言：作为科学体系第一部">
+      <rect x="41" y="114.88" width="218" height="48.9" fill="#3498db" rx="4"/>
+      <rect x="20" y="124.1" width="4" height="4" fill="#3498db" opacity="1" rx="1"/>
+      <rect x="27" y="124.1" width="4" height="4" fill="#3498db" opacity="1" rx="1"/>
+      <rect x="20" y="131.1" width="4" height="4" fill="#3498db" opacity="1" rx="1"/>
+      <rect x="27" y="131.1" width="4" height="4" fill="#3498db" opacity="1" rx="1"/>
+      <text x="51" y="132.9" font-size="14.4" font-weight="bold" fill="#fff">导言：作为科学体系第一部分的</text>
+      <text x="51" y="152.3" font-size="14.4" font-weight="bold" fill="#fff">《精神现象学》的任务</text>
+      <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V7a3 3 0 0 1 3-3z" transform="translate(259 130.32) scale(0.72)" fill="#fff" opacity="0.85"/>
+    </g>
+    <rect x="12" y="167.76" width="265" height="282.9" fill="#fbfcfd" stroke="#e9ecef" rx="6"/>
+      <text x="51" y="188.8" font-size="13.6" fill="#4a5568">第一节　现象学体系和哲学全书体系</text>
+      <path d="M4 0 L12 0 L8 8 Z" transform="translate(31.0 211.76)" fill="#6c757d" opacity="0.55"/>
+      <text x="51" y="216.8" font-size="13.6" fill="#4a5568">第二节　黑格尔对科学体系的理解</text>
+      <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V7a3 3 0 0 1 3-3z" transform="translate(259 205.76) scale(0.72)" fill="#6c757d" opacity="0.3"/>
+      <text x="65" y="244.3" font-size="13.12" fill="#4a5568">a）哲学作为“科学”</text>
+      <text x="65" y="272.3" font-size="13.12" fill="#4a5568">b）绝对的和相对的知识；哲学作为</text>
+      <text x="65" y="290.0" font-size="13.12" fill="#4a5568">科学的体系</text>
+      <path d="M4 0 L12 0 L8 8 Z" transform="translate(31.0 319.54)" fill="#6c757d" opacity="0.55"/>
+      <text x="51" y="316.2" font-size="13.6" fill="#4a5568">第三节　标明体系第一部分特征的</text>
+      <text x="51" y="334.5" font-size="13.6" fill="#4a5568">两个标题的意义</text>
+      <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V7a3 3 0 0 1 3-3z" transform="translate(259 313.54) scale(0.72)" fill="#6c757d" opacity="0.3"/>
+      <text x="65" y="360.4" font-size="13.12" fill="#4a5568">a）“意识经验的科学”</text>
+      <text x="65" y="388.4" font-size="13.12" fill="#4a5568">b）“精神现象学的科学”</text>
+      <path d="M0 4 L8 4 L4 12 Z" transform="translate(34.0 417.26)" fill="#6c757d" opacity="0.35"/>
+      <text x="51" y="416.9" font-size="13.6" fill="#4a5568">第四节　《精神现象学》作为体系</text>
+      <text x="51" y="435.3" font-size="13.6" fill="#4a5568">之第一部分的内在任务</text>
+      <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V7a3 3 0 0 1 3-3z" transform="translate(259 414.26) scale(0.72)" fill="#6c757d" opacity="0.3"/>
+    <g id="ch" data-title="预先考察">
+      <rect x="20" y="467.84000000000003" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="467.84000000000003" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="20" y="474.84000000000003" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="474.84000000000003" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <text x="51" y="476.6" font-size="14.4" fill="#495057">预先考察</text>
+      <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V7a3 3 0 0 1 3-3z" transform="translate(259 464.34000000000003) scale(0.72)" fill="#6c757d" opacity="0.3"/>
+    </g>
+    <g id="ch" data-title="第一章　感性确定性">
+      <rect x="20" y="503.28000000000003" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="503.28000000000003" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="20" y="510.28000000000003" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="510.28000000000003" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <text x="51" y="512.1" font-size="14.4" fill="#495057">第一章　感性确定性</text>
+      <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V7a3 3 0 0 1 3-3z" transform="translate(259 499.78000000000003) scale(0.72)" fill="#6c757d" opacity="0.3"/>
+    </g>
+    <g id="ch" data-title="第二章　知觉">
+      <rect x="20" y="538.72" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="538.72" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="20" y="545.72" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="545.72" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <text x="51" y="547.5" font-size="14.4" fill="#495057">第二章　知觉</text>
+      <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V7a3 3 0 0 1 3-3z" transform="translate(259 535.22) scale(0.72)" fill="#6c757d" opacity="0.3"/>
+    </g>
+    <g id="ch" data-title="第三章　力和知性">
+      <rect x="20" y="574.1600000000001" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="574.1600000000001" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="20" y="581.1600000000001" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="581.1600000000001" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <text x="51" y="582.9" font-size="14.4" fill="#495057">第三章　力和知性</text>
+      <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V7a3 3 0 0 1 3-3z" transform="translate(259 570.6600000000001) scale(0.72)" fill="#6c757d" opacity="0.3"/>
+    </g>
+    <g id="ch" data-title="第二部分：自我意识(1)">
+      <rect x="20" y="609.6000000000001" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="609.6000000000001" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="20" y="616.6000000000001" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="616.6000000000001" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <text x="51" y="618.4" font-size="14.4" fill="#495057">第二部分：自我意识(1)</text>
+      <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V7a3 3 0 0 1 3-3z" transform="translate(259 606.1000000000001) scale(0.72)" fill="#6c757d" opacity="0.3"/>
+    </g>
+    <g id="ch" data-title="结论">
+      <rect x="20" y="645.0400000000002" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="645.0400000000002" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="20" y="652.0400000000002" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="652.0400000000002" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <text x="51" y="653.8" font-size="14.4" fill="#495057">结论</text>
+    </g>
+    <g id="ch" data-title="编者后记">
+      <rect x="20" y="680.4800000000002" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="680.4800000000002" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="20" y="687.4800000000002" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="687.4800000000002" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <text x="51" y="689.3" font-size="14.4" fill="#495057">编者后记</text>
+    </g>
+    <g id="ch" data-title="重要词语德-汉对照表(1">
+      <rect x="20" y="715.9200000000003" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="715.9200000000003" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="20" y="722.9200000000003" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="722.9200000000003" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <text x="51" y="724.7" font-size="14.4" fill="#495057">重要词语德-汉对照表(1)</text>
+      <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V7a3 3 0 0 1 3-3z" transform="translate(259 712.4200000000003) scale(0.72)" fill="#6c757d" opacity="0.3"/>
+    </g>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Library</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f4f4f9; margin: 0; padding: 0; height: 100vh; overflow: hidden; }
+        .container { padding: 40px 40px 40px 92px; overflow-y: auto; height: 100vh; box-sizing: border-box; }
+
+        /* 顶部标题栏 */
+        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-bottom: 10px; }
+        .header h1 { border: none; padding: 0; margin: 0; color: #333; }
+
+        /* 加号按钮 */
+        .add-btn { width: 40px; height: 40px; border-radius: 50%; background: #3498db; color: white; border: none; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s, transform 0.2s; line-height: 1; }
+        .add-btn:hover { background: #2980b9; transform: scale(1.1); }
+        .add-btn:disabled { background: #95a5a6; cursor: not-allowed; transform: none; }
+
+        /* 上传中旋转动画 */
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .add-btn.uploading { pointer-events: none; }
+        .add-btn.uploading::after { content: ""; display: block; width: 18px; height: 18px; border: 2px solid white; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        .add-btn.uploading::before { display: none; }
+
+        .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; margin-top: 30px; }
+        .book-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: transform 0.2s; }
+        .book-title { font-size: 1.2em; font-weight: bold; color: #2c3e50; margin-bottom: 10px; }
+        .book-meta { color: #666; font-size: 0.9em; margin-bottom: 15px; }
+        .btn { display: inline-block; background: #3498db; color: white; text-decoration: none; padding: 8px 15px; border-radius: 4px; font-size: 0.9em; border: none; cursor: pointer; }
+        .btn:hover { background: #2980b9; }
+        .btn.btn-secondary { background: #f1f3f5; color: #495057; border: 1px solid #dee2e6; }
+        .btn.btn-secondary:hover { background: #e9ecef; color: #212529; }
+        .book-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        /* 上传提示 toast */
+        .toast { position: fixed; top: 20px; right: 20px; padding: 12px 24px; border-radius: 6px; color: white; font-family: -apple-system, sans-serif; font-size: 14px; z-index: 9999; opacity: 0; transform: translateY(-10px); transition: all 0.3s; pointer-events: none; }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { background: #27ae60; }
+        .toast.error { background: #e74c3c; }
+    </style>
+</head>
+<body>
+    
+<style>
+    #browser-bar { position:fixed; left:0; top:0; bottom:0; width:52px; background:#eceff1; color:#3a3f45; display:flex; flex-direction:column; align-items:stretch; padding:8px 0; overflow:hidden; border-right:1px solid #d5d9dd; z-index:900; transition:width .22s ease; box-shadow:2px 0 8px rgba(0,0,0,.06); }
+    #browser-bar:hover { width:230px; }
+    #browser-bar .bb-item { flex-shrink:0; display:flex; align-items:center; gap:10px; width:230px; padding:0 10px; height:40px; cursor:pointer; background:transparent; border:none; color:#3a3f45; font-family:-apple-system,sans-serif; }
+    #browser-bar .bb-item:hover { background:#dde2e6; }
+    #browser-bar .bb-item.active { background:#cfe0f0; color:#1a5276; font-weight:600; }
+    #browser-bar .bb-ico { flex-shrink:0; width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:bold; background:#fff; border:1px solid #d5d9dd; color:#4a5560; }
+    #browser-bar .bb-ico svg { width:16px; height:16px; fill:currentColor; }
+    #browser-bar .bb-item.active .bb-ico { background:#5b9bd5; border-color:#5b9bd5; color:#fff; }
+    #browser-bar .bb-label { white-space:nowrap; opacity:0; transition:opacity .12s ease .08s; }
+    #browser-bar:hover .bb-label { opacity:1; }
+    #browser-bar .bb-divider { flex-shrink:0; width:32px; height:1px; background:#d5d9dd; margin:6px 10px; }
+</style>
+
+<div id="browser-bar">
+    <button class="bb-item" id="bb-home">
+        <span class="bb-ico">L</span>
+        <span class="bb-label">Library</span>
+    </button>
+    <div class="bb-divider" id="bb-reader-divider" style="display:none;"></div>
+    <button class="bb-item" id="bb-toc" style="display:none;" title="目录（展开 / 收起章节目录）">
+        <span class="bb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg></span>
+        <span class="bb-label">目录</span>
+    </button>
+    <button class="bb-item" id="bb-aux" style="display:none;" title="辅助键（全书层 / 章节层）">
+        <span class="bb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z"/></svg></span>
+        <span class="bb-label">辅助键</span>
+    </button>
+    <button class="bb-item" id="bb-concept" style="display:none;" title="解释笔：开启后选中文本划词（长句/段 → 语义，短词 → 概念）">
+        <span class="bb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></span>
+        <span class="bb-label">解释笔</span>
+    </button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// 浏览器外壳：悬浮侧边栏（主页 + 阅读工具：目录 / 辅助键 / 解释笔）
+// 阅读工具仅在 reader 页显示（BROWSER_IS_READER）
+// ═══════════════════════════════════════════════
+(function() {
+    var pageBookId = window.BROWSER_BOOK_ID || null;
+    var isHome = !pageBookId;
+    var isReader = !!window.BROWSER_IS_READER;
+
+    document.getElementById('bb-home').addEventListener('click', function() { location.href = '/'; });
+    document.getElementById('bb-home').classList.toggle('active', isHome);
+
+    // 阅读工具（仅 reader 页显示）：
+    // - 目录 → 展开 / 收起章节目录（reader 页的 toggleSidebar）
+    // - 辅助键 → 跳转该书笔记界面（全书层 / 章节层）
+    // - 解释笔 → 开关划词（由 reader 页 JS 接管，仅切换 active 样式）
+    if (isReader) {
+        document.getElementById('bb-toc').style.display = 'flex';
+        document.getElementById('bb-aux').style.display = 'flex';
+        document.getElementById('bb-concept').style.display = 'flex';
+        document.getElementById('bb-reader-divider').style.display = 'block';
+        document.getElementById('bb-toc').addEventListener('click', function() {
+            if (typeof toggleSidebar === 'function') toggleSidebar();
+        });
+        document.getElementById('bb-aux').addEventListener('click', function() {
+            // 从阅读页进入 → 记忆当前阅读位置（返回时恢复到原处）；reader 页变量已就绪才保存
+            try {
+                if (typeof currentChapter !== 'undefined' && typeof mainEl !== 'undefined') {
+                    sessionStorage.setItem('reader3_ret_' + pageBookId,
+                        JSON.stringify({ idx: currentChapter, scrollTop: mainEl.scrollTop }));
+                }
+            } catch (e) {}
+            location.href = '/notes/' + encodeURIComponent(pageBookId);
+        });
+    }
+})();
+</script>
+    <div class="container">
+        <div class="header">
+            <h1>Library</h1>
+            <button class="add-btn" id="addBookBtn" title="导入 EPUB 或 TXT 书籍">+</button>
+        </div>
+
+        <!-- 隐藏的文件选择器 -->
+        <input type="file" id="fileInput" accept=".epub,.txt" style="display: none;">
+
+        <!-- Toast 提示 -->
+        <div class="toast" id="toast"></div>
+
+        
+
+        <div class="book-grid">
+            
+            <div class="book-card">
+                <div class="book-title">Capital Volume I</div>
+                <div class="book-meta">
+                    Karl Marx
+                </div>
+                <div class="book-actions">
+                    <a href="/read/das_kaptical_data/0" class="btn">Read Book</a>
+                    <a href="/notes/das_kaptical_data" class="btn btn-secondary" title="进入本书的笔记界面（全书层 / 章节层）">笔记</a>
+                </div>
+            </div>
+            
+            <div class="book-card">
+                <div class="book-title">黑格尔的精神现象学</div>
+                <div class="book-meta">
+                    马丁·海德格尔(Martin Heidegger), 英格特劳德·古兰特（Ingrid Gurant）, 让·鲍德里亚(Jean Baudrillard), 居伊·德波(Guy Debord), C.莱特·米尔斯 (C.Mright Mills), 安托万·孔帕尼翁(Antoine Compagnon), SoBooKs.cc
+                </div>
+                <div class="book-actions">
+                    <a href="/read/tmpuke_eepn_data/0" class="btn">Read Book</a>
+                    <a href="/notes/tmpuke_eepn_data" class="btn btn-secondary" title="进入本书的笔记界面（全书层 / 章节层）">笔记</a>
+                </div>
+            </div>
+            
+            <div class="book-card">
+                <div class="book-title">富爸爸商学院+富爸爸致富需要做的6件事+富爸爸穷爸爸+富爸爸提高你的财商+富爸爸财务自由之路(修订版)(套装共5册)</div>
+                <div class="book-meta">
+                    〔美〕罗伯特·清崎；〔美〕莎伦·莱希特等
+                </div>
+                <div class="book-actions">
+                    <a href="/read/富爸爸穷爸爸_data/0" class="btn">Read Book</a>
+                    <a href="/notes/富爸爸穷爸爸_data" class="btn btn-secondary" title="进入本书的笔记界面（全书层 / 章节层）">笔记</a>
+                </div>
+            </div>
+            
+            <div class="book-card">
+                <div class="book-title">江村经济</div>
+                <div class="book-meta">
+                    Unknown
+                </div>
+                <div class="book-actions">
+                    <a href="/read/江村经济_data/0" class="btn">Read Book</a>
+                    <a href="/notes/江村经济_data" class="btn btn-secondary" title="进入本书的笔记界面（全书层 / 章节层）">笔记</a>
+                </div>
+            </div>
+            
+            <div class="book-card">
+                <div class="book-title">精神现象学 黑格尔着 (精神现象学 黑格尔着.txt) (z-library.sk, 1lib.sk, z-lib.sk)</div>
+                <div class="book-meta">
+                    Unknown
+                </div>
+                <div class="book-actions">
+                    <a href="/read/精神现象学 黑格尔着 (精神现象学 黑格尔着.txt) (z-library.sk, 1lib.sk, z-lib.sk)_data/0" class="btn">Read Book</a>
+                    <a href="/notes/精神现象学 黑格尔着 (精神现象学 黑格尔着.txt) (z-library.sk, 1lib.sk, z-lib.sk)_data" class="btn btn-secondary" title="进入本书的笔记界面（全书层 / 章节层）">笔记</a>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <script>
+        const addBtn = document.getElementById('addBookBtn');
+        const fileInput = document.getElementById('fileInput');
+        const toast = document.getElementById('toast');
+
+        // 点击加号 → 弹出文件选择对话框
+        addBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // 文件选择后自动上传
+        fileInput.addEventListener('change', async () => {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            // 显示上传中
+            addBtn.classList.add('uploading');
+            addBtn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const resp = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await resp.json();
+
+                if (resp.ok && data.success) {
+                    showToast(`《${data.title}》导入成功！`, 'success');
+                    // 延迟刷新页面以显示新书
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast(data.detail || '导入失败', 'error');
+                }
+            } catch (err) {
+                showToast('上传失败: ' + err.message, 'error');
+            } finally {
+                addBtn.classList.remove('uploading');
+                addBtn.disabled = false;
+                fileInput.value = ''; // 允许重复选择同一文件
+            }
+        });
+
+        function showToast(message, type) {
+            toast.textContent = message;
+            toast.className = 'toast ' + type + ' show';
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reader3 · 前端整合预览（Axure 采集用）</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   Reader3 全前端整合版 —— 单文件静态预览
+   - 三个页面视图：书库 Library / 阅读页 Reader / 笔记 Notes
+   - 左侧悬浮浏览器栏 #browser-bar 为全局共用组件（三页一致）
+   - 右上角 demo-bar 为采集辅助工具条（Axure 导入前可隐藏）
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── 视图容器（三页切换，各自独立成页） ── */
+.view { position:absolute; inset:0; display:block; }
+.view-hidden { display:none !important; }
+
+/* ═══════════════════════════════════════════════
+   demo-bar：Axure 采集辅助工具条（右上角，可隐藏）
+   ═══════════════════════════════════════════════ */
+#demo-bar { position:fixed; top:12px; right:12px; z-index:9999; display:flex; align-items:center; gap:6px;
+  background:rgba(26,42,58,.92); color:#fff; border-radius:10px; padding:7px 10px; font-family:-apple-system,sans-serif;
+  font-size:12px; box-shadow:0 4px 16px rgba(0,0,0,.25); backdrop-filter:blur(4px); }
+#demo-bar .db-label { color:#aebdcc; margin-right:4px; letter-spacing:.5px; white-space:nowrap; }
+#demo-bar button { border:none; background:#2d4a63; color:#fff; border-radius:6px; padding:5px 12px; font-size:12px;
+  cursor:pointer; font-family:inherit; }
+#demo-bar button:hover { background:#3d6280; }
+#demo-bar button.active { background:#3498db; }
+#demo-bar button.db-hide { background:transparent; color:#8fa5b8; }
+#demo-bar button.db-hide:hover { color:#fff; background:rgba(255,255,255,.08); }
+
+/* ═══════════════════════════════════════════════
+   browser-bar：左侧固定边栏（固定 52px，不伸缩；书库视图隐藏）
+   ═══════════════════════════════════════════════ */
+#browser-bar { position:fixed; left:0; top:0; bottom:0; width:52px; background:#eceff1; color:#3a3f45; display:flex; flex-direction:column; align-items:stretch; padding:8px 0; overflow:hidden; border-right:1px solid #d5d9dd; z-index:900; box-shadow:2px 0 8px rgba(0,0,0,.06); }
+#browser-bar .bb-item { flex-shrink:0; display:flex; align-items:center; justify-content:center; width:52px; height:40px; cursor:pointer; background:transparent; border:none; color:#3a3f45; font-family:-apple-system,sans-serif; }
+#browser-bar .bb-item:hover { background:#dde2e6; }
+#browser-bar .bb-item.active { background:#cfe0f0; color:#1a5276; font-weight:600; }
+#browser-bar .bb-ico { flex-shrink:0; width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:bold; background:#fff; border:1px solid #d5d9dd; color:#4a5560; }
+#browser-bar .bb-ico svg { width:16px; height:16px; fill:currentColor; }
+#browser-bar .bb-item.active .bb-ico { background:#5b9bd5; border-color:#5b9bd5; color:#fff; }
+#browser-bar .bb-divider { flex-shrink:0; width:32px; height:1px; background:#d5d9dd; margin:6px 10px; }
+
+/* ═══════════════════════════════════════════════
+   视图一：Library 书库
+   ═══════════════════════════════════════════════ */
+.view-library { background:#f4f4f9; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+.view-library .container { max-width:800px; margin:0 auto; padding:40px; overflow-y:auto; height:100vh; box-sizing:border-box; }
+.view-library .header { display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #ddd; padding-bottom:10px; margin-bottom:10px; }
+.view-library .header h1 { border:none; padding:0; margin:0; color:#333; }
+.view-library .add-btn { width:40px; height:40px; border-radius:50%; background:#3498db; color:white; border:none; font-size:24px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s, transform 0.2s; line-height:1; }
+.view-library .add-btn:hover { background:#2980b9; transform:scale(1.1); }
+.view-library .add-btn:disabled { background:#95a5a6; cursor:not-allowed; transform:none; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.view-library .add-btn.uploading { pointer-events:none; }
+.view-library .add-btn.uploading::after { content:""; display:block; width:18px; height:18px; border:2px solid white; border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite; }
+.view-library .add-btn.uploading::before { display:none; }
+.view-library .book-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:20px; margin-top:30px; }
+.view-library .book-card { background:white; padding:20px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.1); transition:transform 0.2s; display:flex; flex-direction:column; }
+.view-library .book-card:hover { transform:translateY(-2px); }
+.view-library .book-title { font-size:1.2em; font-weight:bold; color:#2c3e50; margin-bottom:10px; text-align:left; }
+.view-library .book-meta { color:#666; font-size:0.9em; margin-bottom:15px; text-align:left; }
+.view-library .btn { display:inline-block; background:#3498db; color:white; text-decoration:none; padding:8px 15px; border-radius:4px; font-size:0.9em; border:none; cursor:pointer; }
+.view-library .btn:hover { background:#2980b9; }
+.view-library .btn.btn-secondary { background:#f1f3f5; color:#495057; border:1px solid #dee2e6; }
+.view-library .btn.btn-secondary:hover { background:#e9ecef; color:#212529; }
+.view-library .book-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:auto; }
+.view-library .toast { position:fixed; top:20px; right:20px; padding:12px 24px; border-radius:6px; color:white; font-family:-apple-system,sans-serif; font-size:14px; z-index:9999; opacity:0; transform:translateY(-10px); transition:all 0.3s; pointer-events:none; }
+.view-library .toast.show { opacity:1; transform:translateY(0); }
+.view-library .toast.success { background:#27ae60; }
+.view-library .toast.error { background:#e74c3c; }
+
+/* ═══════════════════════════════════════════════
+   视图二：Reader 阅读页
+   ═══════════════════════════════════════════════ */
+.view-reader { display:flex; height:100vh; overflow:hidden; font-family:Georgia,serif; background:#fff; }
+.view-reader #side-wrap { position:relative; display:flex; flex-direction:column; flex-shrink:0; width:280px; min-width:0; transition:width .25s; margin-left:52px; }
+.view-reader #side-wrap.collapsed { width:76px; }
+.view-reader #side-wrap.collapsed #sidebar,
+.view-reader #side-wrap.collapsed #resizer { display:none; }
+.view-reader #sidebar { flex-grow:1; min-width:0; background:#f8f9fa; border-right:1px solid #e9ecef; overflow-y:auto; padding:12px 12px 16px; }
+.view-reader #resizer { position:absolute; top:0; right:-3px; width:6px; height:100%; cursor:col-resize; z-index:120; transition:background .15s; }
+.view-reader #resizer:hover { background:rgba(52,152,219,.25); }
+.view-reader .panel-header { font-family:-apple-system,sans-serif; font-size:.8em; font-weight:bold; color:#868e96; letter-spacing:.5px; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #dee2e6; }
+.view-reader .ch-item { margin-bottom:6px; }
+.view-reader .ch-row { display:flex; align-items:center; }
+.view-reader .ch-link { flex:1; text-decoration:none; color:#495057; font-size:.9em; font-weight:500; padding:5px 10px; border-radius:4px; line-height:1.35; font-family:-apple-system,sans-serif; cursor:pointer; }
+.view-reader .ch-link:hover { background:rgba(52,152,219,.08); }
+.view-reader .ch-link.active { background:#3498db; color:#fff; font-weight:bold; }
+.view-reader .ch-toggle { display:inline-grid; grid-template-columns:4px 4px; grid-template-rows:4px 4px; gap:3px; cursor:pointer; user-select:none; flex-shrink:0; opacity:.5; transition:opacity .15s; padding:6px 8px; margin-right:2px; align-self:center; }
+.view-reader .ch-toggle:hover { opacity:.8; }
+.view-reader .ch-toggle.open { opacity:1; }
+.view-reader .ch-toggle i { display:block; width:4px; height:4px; background:#495057; border-radius:1px; }
+.view-reader .ch-toggle.open i { background:#3498db; }
+.view-reader .section-box { border:1px solid #e9ecef; border-radius:6px; background:#fbfcfd; padding:4px 6px; margin:4px 0 8px 0; overflow:hidden; transition:max-height .2s,opacity .15s,padding .2s,margin .2s; }
+.view-reader .section-box.collapsed { max-height:0!important; opacity:0; padding-top:0; padding-bottom:0; margin-top:0; margin-bottom:0; border-width:0; }
+.view-reader .sec-link { display:block; flex:1; min-width:0; text-decoration:none; color:#4a5568; font-size:.85em; padding:4px 8px; border-radius:3px; line-height:1.35; font-family:-apple-system,sans-serif; cursor:pointer; }
+.view-reader .sec-link:hover { background:rgba(0,0,0,.03); color:#2d3748; }
+.view-reader .sec-link.active { color:#1a202c; font-weight:600; background:rgba(0,0,0,.045); }
+.view-reader .sec-link.d1 { padding-left:2px; }
+.view-reader .sec-link.d2 { padding-left:4px; font-size:.82em; }
+.view-reader .sec-link.d3 { padding-left:6px; font-size:.79em; }
+.view-reader .sec-link.d4 { padding-left:10px; font-size:.76em; }
+.view-reader .sec-row { display:flex; align-items:center; }
+.view-reader .sec-toggle { width:20px; height:28px; flex-shrink:0; cursor:pointer; user-select:none; opacity:.35; transition:opacity .15s,transform .15s; font-size:18px; display:flex; align-items:center; justify-content:center; margin-right:2px; }
+.view-reader .sec-toggle:hover { opacity:.7; }
+.view-reader .sec-toggle.open { transform:rotate(90deg); }
+.view-reader .sec-kids { overflow:hidden; transition:max-height .2s,opacity .15s; }
+.view-reader .sec-kids.collapsed { max-height:0!important; opacity:0; }
+.view-reader .lock-icon { margin-left:auto; cursor:pointer; display:flex; align-items:center; justify-content:center; width:18px; height:18px; opacity:.3; user-select:none; flex-shrink:0; color:#6c757d; }
+.view-reader .lock-icon svg { width:13px; height:13px; fill:currentColor; }
+.view-reader .lock-icon:hover { opacity:.85; }
+.view-reader .lock-icon.locked { opacity:1; }
+.view-reader .sec-row.d1 { padding-left:8px; }
+.view-reader .sec-row.d2 { padding-left:20px; }
+.view-reader .sec-row.d3 { padding-left:32px; }
+.view-reader .sec-row.d4 { padding-left:42px; }
+.view-reader #main { flex-grow:1; min-width:0; overflow-y:auto; position:relative; scroll-behavior:smooth; }
+.view-reader #chapter-view { position:relative; max-width:700px; margin:0 auto 0 calc((100% - 780px) / 4); padding:40px 40px 120px; }
+.view-reader .ch-title-bar { display:flex; align-items:center; gap:12px; font-family:-apple-system,sans-serif; font-size:1.6em; font-weight:bold; color:#1a1a2e; padding:16px 0 12px; margin-bottom:20px; border-bottom:2px solid #3498db; position:sticky; top:0; background:linear-gradient(180deg,#fff 70%,rgba(255,255,255,0)); z-index:10; backdrop-filter:blur(4px); }
+.view-reader .ch-title-bar #ch-title { flex:1; min-width:0; word-break:break-word; }
+.view-reader .ch-content { line-height:1.8; font-size:1.15em; color:#212529; }
+.view-reader .ch-content p { margin-bottom:1.5em; text-align:justify; }
+.view-reader .ch-content img { max-width:100%; height:auto; display:block; margin:20px auto; }
+.view-reader .ch-content h1,.view-reader .ch-content h2,.view-reader .ch-content h3 { font-family:-apple-system,sans-serif; margin-top:1.5em; color:#333; scroll-margin-top:80px; }
+.view-reader .ch-content span[id] { scroll-margin-top:100px; }
+.view-reader .ch-content a { color:#2d6cdf; text-decoration:none; cursor:pointer; }
+.view-reader .ch-content a:hover { text-decoration:underline; }
+.view-reader #ch-loading { text-align:center; padding:60px; display:none; }
+.view-reader #ch-loading .spinner { display:inline-block; width:28px; height:28px; border:3px solid #e9ecef; border-top-color:#3498db; border-radius:50%; animation:spin .6s linear infinite; }
+.view-reader #ch-nav { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:16px; background:rgba(255,255,255,.95); border:1px solid #dee2e6; border-radius:24px; padding:8px 20px; box-shadow:0 2px 12px rgba(0,0,0,.06); z-index:20; font-family:-apple-system,sans-serif; font-size:.9em; }
+.view-reader #ch-nav button { border:none; background:none; cursor:pointer; font-size:1.1em; color:#495057; padding:4px 8px; border-radius:4px; }
+.view-reader #ch-nav button:hover { background:#f1f3f5; color:#3498db; }
+.view-reader #ch-nav span { color:#868e96; white-space:nowrap; }
+.view-reader .ch-content mark.concept-hl { background:#fff3bf; color:inherit; border-radius:2px; padding:0 1px; cursor:pointer; }
+.view-reader .ch-content mark.concept-hl:hover { background:#ffd43b; }
+.view-reader .ch-content mark.semantic-hl { background:transparent; color:inherit; border-bottom:2px solid #4da3d6; padding:0 1px; cursor:pointer; }
+.view-reader .ch-content mark.semantic-hl.off { border-bottom-color:transparent; }
+.view-reader .ch-content mark.semantic-hl:hover { background:rgba(77,163,214,.12); }
+.view-reader .sem-bookmark { position:absolute; left:-24px; width:44px; height:27px; background:#a5d8ff; clip-path:polygon(0 0, 78% 0, 100% 50%, 78% 100%, 0 100%); filter:drop-shadow(0 2px 4px rgba(0,0,0,.18)); display:flex; align-items:center; justify-content:center; padding-right:10px; cursor:pointer; z-index:40; border:none; user-select:none; }
+.view-reader .sem-bookmark .bm-num { font-family:-apple-system,sans-serif; font-size:15px; font-weight:bold; color:#fff; line-height:1; }
+.view-reader .sem-bookmark:hover { background:#74c0fc; }
+.view-reader .sem-bookmark.active { background:#4da3d6; }
+.view-reader .semantic-pop { position:absolute; z-index:500; width:320px; height:400px; background:#fff; border:1px solid #a5d8ff; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.08); display:flex; flex-direction:column; font-family:-apple-system,sans-serif; font-size:.85em; }
+.view-reader .semantic-pop .sp-title { flex-shrink:0; padding:8px 88px 6px 12px; font-weight:bold; color:#1a1a2e; border-bottom:1px solid #eef3f7; font-size:.9em; word-break:break-all; }
+.view-reader .semantic-pop.dragging { opacity:.92; user-select:none; }
+.view-reader .semantic-pop .sp-jump { position:absolute; top:5px; right:54px; width:22px; height:22px; cursor:pointer; z-index:2; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid #dee2e6; border-radius:5px; color:#6c757d; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+.view-reader .semantic-pop .sp-jump:hover { background:#f1f3f5; color:#2d6cdf; }
+.view-reader .semantic-pop .sp-jump svg { width:15px; height:15px; fill:currentColor; display:block; }
+.view-reader .semantic-pop .sp-pin { position:absolute; top:7px; right:28px; width:20px; height:20px; cursor:pointer; color:#6c757d; opacity:.5; z-index:2; display:flex; align-items:center; justify-content:center; }
+.view-reader .semantic-pop .sp-pin:hover { opacity:1; }
+.view-reader .semantic-pop .sp-pin.locked { opacity:1; }
+.view-reader .semantic-pop .sp-pin svg { width:13px; height:13px; fill:currentColor; }
+.view-reader .semantic-pop .sp-move { position:absolute; top:7px; right:4px; width:20px; height:20px; color:#6c757d; opacity:.5; z-index:2; display:flex; align-items:center; justify-content:center; }
+.view-reader .semantic-pop .sp-move:hover { opacity:1; }
+.view-reader .semantic-pop .sp-move svg { width:15px; height:15px; fill:currentColor; }
+.view-reader .semantic-pop .sp-body { flex:1; overflow-y:auto; padding:10px 12px; line-height:1.6; color:#2b4a63; word-break:break-word; }
+.view-reader .semantic-pop .sp-body p { margin:.35em 0; }
+.view-reader .semantic-pop .sp-body h1, .view-reader .semantic-pop .sp-body h2, .view-reader .semantic-pop .sp-body h3,
+.view-reader .semantic-pop .sp-body h4, .view-reader .semantic-pop .sp-body h5, .view-reader .semantic-pop .sp-body h6 { margin:.6em 0 .3em; font-size:1.05em; color:#1a1a2e; }
+.view-reader .semantic-pop .sp-body ul, .view-reader .semantic-pop .sp-body ol { margin:.3em 0; padding-left:1.3em; }
+.view-reader .semantic-pop .sp-body li { margin:.15em 0; }
+.view-reader .semantic-pop .sp-body code { background:#eef3f7; border-radius:3px; padding:0 3px; font-size:.92em; }
+.view-reader .semantic-pop .sp-body pre { background:#eef3f7; border-radius:6px; padding:8px 10px; overflow-x:auto; margin:.5em 0; }
+.view-reader .semantic-pop .sp-body pre code { background:none; padding:0; }
+.view-reader .semantic-pop .sp-body a { color:#2d6cdf; }
+.view-reader .semantic-pop .sp-body hr { border:none; border-top:1px solid #dee2e6; margin:.6em 0; }
+.view-reader .semantic-pop .sp-resize { position:absolute; right:0; bottom:0; width:18px; height:18px; cursor:nwse-resize; }
+.view-reader .semantic-pop .sp-resize::after { content:''; position:absolute; right:3px; bottom:3px; width:8px; height:8px; border-right:2px solid #a5d8ff; border-bottom:2px solid #a5d8ff; }
+
+/* ═══════════════════════════════════════════════
+   视图三：Notes 笔记（四层级）
+   ═══════════════════════════════════════════════ */
+.view-notes { background:#f4f4f9; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+.view-notes .notes-wrap { position:absolute; left:92px; top:0; right:0; bottom:0; display:flex; flex-direction:column; }
+.view-notes .header { display:flex; align-items:center; gap:14px; padding:16px 24px 12px; border-bottom:2px solid #3498db; flex-shrink:0; background:#fff; }
+.view-notes .header .back { color:#495057; text-decoration:none; font-size:.95em; white-space:nowrap; flex-shrink:0; }
+.view-notes .header .back:hover { color:#3498db; }
+.view-notes .header h1 { flex:1; margin:0; font-size:1.4em; color:#1a1a2e; word-break:break-all; }
+.view-notes .status { font-size:.85em; color:#868e96; min-height:1em; }
+.view-notes .status.ok { color:#27ae60; }
+.view-notes .main { flex:1; display:flex; min-height:0; }
+.view-notes .level-nav { width:190px; flex-shrink:0; border-right:1px solid #dee2e6; background:#fff; overflow-y:auto; padding:10px 0; }
+.view-notes .nav-title { font-size:.78em; color:#adb5bd; padding:4px 16px 8px; letter-spacing:.12em; }
+.view-notes .lv { display:flex; align-items:center; gap:8px; width:100%; border:none; background:none; cursor:pointer; padding:11px 16px; font-family:inherit; font-size:.95em; color:#495057; text-align:left; }
+.view-notes .lv:hover { background:#f1f3f5; }
+.view-notes .lv.active { background:#e7f1fa; color:#1a5276; font-weight:600; border-right:3px solid #3498db; }
+.view-notes .lv .lv-name { flex:1; }
+.view-notes .lv .lv-tag { font-size:.72em; color:#868e96; background:#eef3f7; border-radius:4px; padding:1px 6px; }
+.view-notes .lv.active .lv-tag { background:#d6e8f8; color:#1a5276; }
+.view-notes .level-body { flex:1; position:relative; min-width:0; }
+.view-notes .lvl { position:absolute; inset:0; overflow-y:auto; display:none; padding:20px 28px 80px; box-sizing:border-box; }
+.view-notes .lvl.active { display:block; }
+.view-notes .lvl-head { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.view-notes .lvl-title { flex:1; font-size:1.05em; font-weight:bold; color:#2b4a63; border-left:3px solid #4da3d6; padding-left:10px; }
+.view-notes .lvl-sub { font-weight:normal; color:#868e96; font-size:.85em; }
+.view-notes .btn { display:inline-flex; align-items:center; justify-content:center; background:#3498db; color:#fff; border:none; border-radius:4px; padding:6px 14px; font-size:.9em; cursor:pointer; text-decoration:none; }
+.view-notes .btn:hover { background:#2980b9; }
+.view-notes .btn.ghost { background:#f1f3f5; color:#495057; border:1px solid #dee2e6; }
+.view-notes .btn.ghost:hover { background:#e9ecef; color:#212529; }
+.view-notes .btn:disabled { background:#95a5a6; cursor:not-allowed; }
+.view-notes .content { font-size:.98em; line-height:1.85; color:#212529; white-space:pre-wrap; word-break:break-word; background:#f8fbfd; border:1px solid #eef3f7; border-radius:8px; padding:16px 18px; min-height:60px; }
+.view-notes .content.empty, .view-notes .lvl-empty { color:#adb5bd; font-size:.9em; }
+.view-notes .editor { display:none; width:100%; box-sizing:border-box; min-height:200px; padding:12px 14px; font-family:inherit; font-size:.95em; line-height:1.7; color:#212529; border:1px solid #a5d8ff; border-radius:8px; resize:vertical; outline:none; }
+.view-notes .editor:focus { border-color:#4da3d6; box-shadow:0 0 0 3px rgba(77,163,214,.15); }
+.view-notes .edit-actions { display:none; gap:10px; margin-top:12px; }
+.view-notes .ch-layout { display:flex; gap:0; min-height:420px; }
+.view-notes .ch-list { width:250px; flex-shrink:0; border-right:1px solid #eef3f7; overflow-y:auto; max-height:62vh; padding:8px 0; }
+.view-notes .ch-item { display:flex; align-items:baseline; gap:8px; width:100%; text-align:left; border:none; background:none; cursor:pointer; padding:9px 14px; font-family:inherit; font-size:.92em; color:#495057; word-break:break-all; }
+.view-notes .ch-item:hover { background:#f1f3f5; }
+.view-notes .ch-item.active { background:#e7f1fa; color:#1a5276; font-weight:600; }
+.view-notes .ch-item .no { color:#adb5bd; font-size:.82em; flex-shrink:0; min-width:2em; }
+.view-notes .ch-item.active .no { color:#4da3d6; }
+.view-notes .ch-detail { flex:1; min-width:0; padding:4px 20px; display:flex; flex-direction:column; gap:12px; }
+.view-notes .ch-detail .ch-name { font-size:1em; font-weight:bold; color:#2b4a63; word-break:break-all; }
+.view-notes .ch-detail .content { flex:1; }
+.view-notes .lay-count { font-size:.8em; color:#868e96; background:#eef3f7; border-radius:10px; padding:2px 10px; }
+.view-notes .content.md { white-space:normal; }
+.view-notes .md p { margin:.35em 0; }
+.view-notes .md h1, .view-notes .md h2, .view-notes .md h3, .view-notes .md h4, .view-notes .md h5, .view-notes .md h6 { font-family:-apple-system,sans-serif; margin:.7em 0 .35em; color:#1a1a2e; }
+.view-notes .md h1 { font-size:1.3em; } .view-notes .md h2 { font-size:1.15em; } .view-notes .md h3 { font-size:1.05em; }
+.view-notes .md h4, .view-notes .md h5, .view-notes .md h6 { font-size:1em; }
+.view-notes .md ul, .view-notes .md ol { margin:.35em 0; padding-left:1.4em; }
+.view-notes .md li { margin:.15em 0; }
+.view-notes .md code { background:#eef3f7; border-radius:3px; padding:0 3px; font-size:.92em; }
+.view-notes .md pre { background:#eef3f7; border-radius:6px; padding:10px 12px; overflow-x:auto; margin:.5em 0; }
+.view-notes .md pre code { background:none; padding:0; }
+.view-notes .md a { color:#2d6cdf; }
+.view-notes .md hr { border:none; border-top:1px solid #dee2e6; margin:.8em 0; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+     Axure 采集辅助工具条（右上角；导入前可点“隐藏工具条”）
+     ═══════════════════════════════════════════════ -->
+<div id="demo-bar">
+    <span class="db-label">页面切换</span>
+    <button data-view="library" class="active">书库</button>
+    <button data-view="reader">阅读页</button>
+    <button data-view="notes">笔记页</button>
+    <button class="db-hide" id="db-hide" title="隐藏此工具条（Axure 采集时使用）">隐藏工具条</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     全局浏览器栏（三页共用，阅读页显示阅读工具）
+     ═══════════════════════════════════════════════ -->
+<div id="browser-bar">
+    <button class="bb-item active" id="bb-home" title="返回书库">
+        <span class="bb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></span>
+    </button>
+    <div class="bb-divider" id="bb-reader-divider" style="display:none;"></div>
+    <button class="bb-item" id="bb-toc" style="display:none;" title="目录（展开 / 收起章节目录）">
+        <span class="bb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg></span>
+    </button>
+    <button class="bb-item" id="bb-aux" style="display:none;" title="辅助键（全书层 / 章节层）">
+        <span class="bb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z"/></svg></span>
+    </button>
+    <button class="bb-item" id="bb-concept" style="display:none;" title="解释笔：开启后选中文本划词（长句/段 → 语义，短词 → 概念）">
+        <span class="bb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></span>
+    </button>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     视图一：Library 书库
+     ═══════════════════════════════════════════════ -->
+<section class="view view-library" id="view-library">
+    <div class="container">
+        <div class="header">
+            <h1>书库</h1>
+            <button class="add-btn" id="addBookBtn" title="导入 EPUB 或 TXT 书籍">+</button>
+        </div>
+
+        <input type="file" id="fileInput" accept=".epub,.txt" style="display:none;">
+        <div class="toast" id="toast"></div>
+
+        <div class="book-grid">
+            <div class="book-card">
+                <div class="book-title">富爸爸穷爸爸</div>
+                <div class="book-meta">罗伯特·清崎</div>
+                <div class="book-actions">
+                    <a href="#" class="btn" onclick="window.showView('reader');return false;">Read Book</a>
+                    <a href="#" class="btn btn-secondary" onclick="window.showView('notes');return false;">笔记</a>
+                </div>
+            </div>
+            <div class="book-card">
+                <div class="book-title">江村经济</div>
+                <div class="book-meta">费孝通</div>
+                <div class="book-actions">
+                    <a href="#" class="btn" onclick="window.showView('reader');return false;">Read Book</a>
+                    <a href="#" class="btn btn-secondary" onclick="window.showView('notes');return false;">笔记</a>
+                </div>
+            </div>
+            <div class="book-card">
+                <div class="book-title">精神现象学</div>
+                <div class="book-meta">黑格尔</div>
+                <div class="book-actions">
+                    <a href="#" class="btn" onclick="window.showView('reader');return false;">Read Book</a>
+                    <a href="#" class="btn btn-secondary" onclick="window.showView('notes');return false;">笔记</a>
+                </div>
+            </div>
+            <div class="book-card">
+                <div class="book-title">Das Kapital（资本论）</div>
+                <div class="book-meta">卡尔·马克思</div>
+                <div class="book-actions">
+                    <a href="#" class="btn" onclick="window.showView('reader');return false;">Read Book</a>
+                    <a href="#" class="btn btn-secondary" onclick="window.showView('notes');return false;">笔记</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     视图二：Reader 阅读页（示例书：《江村经济》第一章）
+     ═══════════════════════════════════════════════ -->
+<section class="view view-reader view-hidden" id="view-reader">
+
+    <div id="side-wrap">
+        <div id="sidebar">
+            <div class="panel-header">目 录</div>
+            <div id="toc-tree"></div>
+        </div>
+        <div id="resizer" title="拖动调整目录宽度"></div>
+    </div>
+
+    <div id="main">
+        <div id="chapter-view">
+            <div class="ch-title-bar" id="ch-title-bar">
+                <span id="ch-title">第一章 调查区域</span>
+            </div>
+            <div class="ch-content" id="ch-content">
+                <h2 id="s1">一、江村概况</h2>
+                <p>我们将在本书中讨论中国长江下游农村的变迁。这一地区在地理上属于太湖流域，土地肥沃，水道纵横，是传统稻作农业的核心地带。调查以<mark class="concept-hl" id="mk-con1" data-term="江村" data-kind="concept" data-pop="pop-con1">江村</mark>为样本，追踪其家庭、经济与亲属制度在近三十年间的演变。</p>
+                <p>本书所用的材料，主要来自一九三六年夏季作者在江苏省吴江县开弦弓村的实地调查。开弦弓村位于太湖东南岸，全村约三百六十户人家，以农业为主要生计，兼营蚕桑与家庭手工业。</p>
+                <p><mark class="semantic-hl" data-term="家庭这一社会组织在此地呈现出从生产单元向消费单元转变的趋势，并随职业分化而不断调整其结构" data-kind="semantic" data-bookmark="bm1">家庭这一社会组织在此地呈现出从生产单元向消费单元转变的趋势，并随职业分化而不断调整其结构。</mark>这一观察构成了理解农村经济变迁的起点。</p>
+                <p>土地制度方面，村内田权分为田底与田面两级。田底权属于地主，田面权属于佃户，双方在纳税与收租上各有其责。<a href="#s2">（参见第二节：土地关系）</a></p>
+
+                <h2 id="s2">二、土地关系</h2>
+                <p>在讨论土地问题之前，有必要先厘清“所有权”在传统农村中的实际含义。这里所说的田底权与田面权之分离，是江南水乡特有的安排：地主保有收租之权，佃户保有耕作之权，二者都可以独立转让。</p>
+                <p>这一制度的形成，与人口压力及水利投入密切相关。圩田的开垦需要大量协作，单家独户难以承担，于是形成了以租佃为纽带的村庄共同体。</p>
+
+                <h2 id="s3">三、亲属与家庭</h2>
+                <p>亲属称谓系统是理解家庭结构的钥匙。本书对亲属关系的分析，不限于血亲与姻亲的谱系位置，更关注其在日常生活中的实际运用——谁与谁同灶吃饭，谁在农忙时节互相帮工。</p>
+
+                <!-- 语义书签示例（书签 + 段落右侧弹窗） -->
+                <button class="sem-bookmark active" id="bm1" style="top:298px;" data-id="1" data-term="家庭这一社会组织在此地呈现出从生产单元向消费单元转变的趋势，并随职业分化而不断调整其结构" title="点击展开/收起语义内容">
+                    <span class="bm-num">1</span>
+                </button>
+                <div class="semantic-pop" id="pop-sem1" data-anchor="bm1" style="left:756px; top:250px;">
+                    <div class="sp-title">语义 · 1</div>
+                    <div class="sp-jump" title="跳到辅助键对应词条"></div>
+                    <div class="sp-pin" title="锁定/解锁（锁定后弹窗保持显示）"></div>
+                    <div class="sp-move" title="拖动移动弹窗"></div>
+                    <div class="sp-body">
+                        <p>家庭这一社会组织在此地呈现出从生产单元向消费单元转变的趋势，并随职业分化而不断调整其结构。</p>
+                        <p><strong>解析：</strong>在传统农业社会中，家庭同时是生产组织与消费组织；随着乡村工业与职业分化的发展，家庭的生产功能逐渐外移，更多地表现为消费单元。</p>
+                        <p><strong>相关概念：</strong></p>
+                        <ul>
+                            <li>田底权 / 田面权</li>
+                            <li>职业分化</li>
+                            <li>亲属网络</li>
+                        </ul>
+                    </div>
+                    <div class="sp-resize"></div>
+                </div>
+
+                <!-- 概念弹窗示例（初始隐藏，悬停 mark 显示） -->
+                <div class="semantic-pop" id="pop-con1" data-anchor="mk-con1" style="left:756px; top:560px; display:none;">
+                    <div class="sp-title">江村</div>
+                    <div class="sp-jump" title="跳到辅助键对应词条"></div>
+                    <div class="sp-pin" title="锁定/解锁（锁定后弹窗保持显示）"></div>
+                    <div class="sp-move" title="拖动移动弹窗"></div>
+                    <div class="sp-body">
+                        <p>江村，即江苏省吴江县开弦弓村，是费孝通《江村经济》的调查地点。</p>
+                        <p><strong>要点：</strong>“江村”是作者为保护隐私而使用的代称；该村以稻作农业与蚕桑业闻名，是理解二十世纪三十年代中国江南农村经济的典型样本。</p>
+                    </div>
+                    <div class="sp-resize"></div>
+                </div>
+            </div>
+        </div>
+        <div id="ch-loading"><div class="spinner"></div></div>
+    </div>
+
+    <div id="ch-nav">
+        <button id="ch-nav-prev" onclick="window.demoNav(-1)" title="上一章">&#9664;</button>
+        <span id="ch-nav-label">1 / 4</span>
+        <button id="ch-nav-next" onclick="window.demoNav(1)" title="下一章">&#9654;</button>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     视图三：Notes 笔记页（四层级：L1 全书 / L2 章节 / L3 语义 / L4 概念）
+     ═══════════════════════════════════════════════ -->
+<section class="view view-notes view-hidden" id="view-notes">
+    <div class="notes-wrap">
+        <div class="header">
+            <a class="back" id="back-link" href="#" onclick="window.showView('reader');return false;">&larr; 返回阅读</a>
+            <h1>江村经济</h1>
+            <span class="status" id="page-status"></span>
+        </div>
+
+        <div class="main">
+            <nav class="level-nav">
+                <div class="nav-title">四层级</div>
+                <button class="lv active" data-level="L1" onclick="switchLevel('L1')"><span class="lv-name">全书层</span><span class="lv-tag">L1</span></button>
+                <button class="lv" data-level="L2" onclick="switchLevel('L2')"><span class="lv-name">章节层</span><span class="lv-tag">L2</span></button>
+                <button class="lv" data-level="L3" onclick="switchLevel('L3')"><span class="lv-name">语义层</span><span class="lv-tag">L3</span></button>
+                <button class="lv" data-level="L4" onclick="switchLevel('L4')"><span class="lv-name">概念层</span><span class="lv-tag">L4</span></button>
+            </nav>
+
+            <div class="level-body">
+                <!-- L1 全书层 -->
+                <div class="lvl active" data-level="L1">
+                    <div class="lvl-head">
+                        <div class="lvl-title">全书层（L1）<span class="lvl-sub">整本书的整体分析</span></div>
+                        <span class="status" id="nb-book-status"></span>
+                        <button class="btn ghost" id="nb-book-edit-btn">编辑</button>
+                    </div>
+                    <div class="content md" id="nb-book-body">
+                        <h2>《江村经济》全书层分析</h2>
+                        <p>本书以江苏省吴江县开弦弓村（江村）为田野样本，系统考察二十世纪三十年代中国江南农村的经济与社会结构。</p>
+                        <h3>核心线索</h3>
+                        <ul>
+                            <li><strong>经济基础：</strong>稻作农业 + 蚕桑家庭手工业的复合生计。</li>
+                            <li><strong>制度安排：</strong>田底权 / 田面权分离的租佃关系。</li>
+                            <li><strong>社会单元：</strong>家庭由生产单元向消费单元转变。</li>
+                        </ul>
+                        <h3>总体判断</h3>
+                        <p>江村的变化不是传统的“解体”，而是外部市场力量进入后，原有制度在调适中形成的<em>过渡形态</em>。</p>
+                    </div>
+                    <textarea class="editor" id="nb-book-editor" placeholder="在此编写全书层笔记…"></textarea>
+                    <div class="edit-actions" id="nb-book-actions">
+                        <button class="btn" id="nb-book-save-btn">保存</button>
+                        <button class="btn ghost" id="nb-book-cancel-btn">取消</button>
+                    </div>
+                </div>
+
+                <!-- L2 章节层 -->
+                <div class="lvl" data-level="L2">
+                    <div class="lvl-head">
+                        <div class="lvl-title">章节层（L2）<span class="lvl-sub">逐章笔记，点击左侧章节查看</span></div>
+                        <span class="status" id="nb-ch-status"></span>
+                        <button class="btn ghost" id="nb-ch-edit-btn" disabled>编辑</button>
+                    </div>
+                    <div class="ch-layout">
+                        <div class="ch-list" id="nb-ch-list"></div>
+                        <div class="ch-detail">
+                            <div class="ch-name" id="nb-ch-name">第一章 调查区域</div>
+                            <div class="content md" id="nb-ch-body">
+                                <p>本章交代调查区域的地理、人口与经济背景。</p>
+                                <h3>要点</h3>
+                                <ul>
+                                    <li>太湖流域稻作农业带；水道交通。</li>
+                                    <li>全村约三百六十户，农桑兼营。</li>
+                                </ul>
+                            </div>
+                            <textarea class="editor" id="nb-ch-editor" placeholder="在此编写本章笔记…"></textarea>
+                            <div class="edit-actions" id="nb-ch-actions">
+                                <button class="btn" id="nb-ch-save-btn">保存</button>
+                                <button class="btn ghost" id="nb-ch-cancel-btn">取消</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- L3 语义层 -->
+                <div class="lvl" data-level="L3">
+                    <div class="lvl-head">
+                        <div class="lvl-title">语义层（L3）<span class="lvl-sub">选中文本的解析记忆</span></div>
+                        <span class="lay-count" id="nb-sem-count"></span>
+                    </div>
+                    <div class="ch-layout">
+                        <div class="ch-list" id="nb-sem-list"></div>
+                        <div class="ch-detail">
+                            <div class="ch-name" id="nb-sem-name">语义 · 1</div>
+                            <div class="content md" id="nb-sem-body">
+                                <p>家庭这一社会组织在此地呈现出从生产单元向消费单元转变的趋势，并随职业分化而不断调整其结构。</p>
+                                <p><strong>解析：</strong>传统社会中家庭同时是生产与消费组织；随着乡村工业发展，生产功能外移，家庭逐渐成为消费单元。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- L4 概念层 -->
+                <div class="lvl" data-level="L4">
+                    <div class="lvl-head">
+                        <div class="lvl-title">概念层（L4）<span class="lvl-sub">词条概念解析</span></div>
+                        <span class="lay-count" id="nb-con-count"></span>
+                    </div>
+                    <div class="ch-layout">
+                        <div class="ch-list" id="nb-con-list"></div>
+                        <div class="ch-detail">
+                            <div class="ch-name" id="nb-con-name">江村</div>
+                            <div class="content md" id="nb-con-body">
+                                <p>江村，即江苏省吴江县开弦弓村，费孝通《江村经济》的调查地点。</p>
+                                <p><strong>要点：</strong>作者为保护隐私使用代称；该村是理解二十世纪三十年代江南农村经济的典型样本。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   统一 Markdown 渲染（window.renderMarkdown）
+   供笔记页编辑器演示 / 弹窗内容共用
+   ═══════════════════════════════════════════════════════ */
+(function() {
+    function esc(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function inline(s) {
+        s = s.replace(/`([^`]+)`/g,'<code>$1</code>');
+        s = s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+        s = s.replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<em>$2</em>');
+        s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+        return s;
+    }
+    window.renderMarkdown = function(md) {
+        if (md === null || md === undefined) return '';
+        var text = String(md).replace(/\r\n/g,'\n');
+        var blocks = [];
+        text = text.replace(/```([\s\S]*?)```/g, function(m, code) {
+            var idx = blocks.length;
+            blocks.push('<pre><code>' + esc(code.replace(/\n+$/,'')) + '</code></pre>');
+            return '\u0000BLOCK' + idx + '\u0000';
+        });
+        var lines = text.split('\n');
+        var html = [], listStack = null, para = [];
+        function flushPara(){ if(para.length){ html.push('<p>'+inline(esc(para.join(' ')))+'</p>'); para=[]; } }
+        function closeList(){ if(listStack){ html.push('</'+listStack+'>'); listStack=null; } }
+        for (var i=0;i<lines.length;i++) {
+            var t = lines[i].trim();
+            var blk = t.match(/^\u0000BLOCK(\d+)\u0000$/);
+            if (blk){ flushPara(); closeList(); html.push(blocks[+blk[1]]); continue; }
+            if (!t){ flushPara(); closeList(); continue; }
+            var hm = t.match(/^(#{1,6})\s+(.*)$/);
+            if (hm){ flushPara(); closeList(); var lv=hm[1].length; html.push('<h'+lv+'>'+inline(esc(hm[2]))+'</h'+lv+'>'); continue; }
+            var um = t.match(/^[-*]\s+(.*)$/);
+            if (um){ flushPara(); if(listStack!=='ul'){ closeList(); html.push('<ul>'); listStack='ul'; } html.push('<li>'+inline(esc(um[1]))+'</li>'); continue; }
+            var om = t.match(/^\d+[.、]\s+(.*)$/);
+            if (om){ flushPara(); if(listStack!=='ol'){ closeList(); html.push('<ol>'); listStack='ol'; } html.push('<li>'+inline(esc(om[1]))+'</li>'); continue; }
+            if (/^[-*_]{3,}$/.test(t)){ flushPara(); closeList(); html.push('<hr>'); continue; }
+            if (listStack) closeList();
+            para.push(t);
+        }
+        flushPara(); closeList();
+        var out = html.join('\n');
+        out = out.replace(/\u0000BLOCK(\d+)\u0000/g, function(m,n){ return blocks[+n]; });
+        return out;
+    };
+})();
+
+/* ═══════════════════════════════════════════════
+   视图切换（书库 / 阅读页 / 笔记页）
+   ═══════════════════════════════════════════════ */
+(function() {
+    var currentView = 'library';
+    var V = { library:'view-library', reader:'view-reader', notes:'view-notes' };
+
+    window.showView = function(name) {
+        if (!V[name]) return;
+        currentView = name;
+        Object.keys(V).forEach(function(k) {
+            document.getElementById(V[k]).classList.toggle('view-hidden', k !== name);
+        });
+        document.querySelectorAll('#demo-bar button[data-view]').forEach(function(b) {
+            b.classList.toggle('active', b.getAttribute('data-view') === name);
+        });
+        // 浏览器栏按钮状态（书库视图隐藏整个边栏）
+        var isReader = (name === 'reader');
+        document.getElementById('browser-bar').style.display = (name === 'library') ? 'none' : 'flex';
+        document.getElementById('bb-toc').style.display = isReader ? 'flex' : 'none';
+        document.getElementById('bb-aux').style.display = isReader ? 'flex' : 'none';
+        document.getElementById('bb-concept').style.display = isReader ? 'flex' : 'none';
+        document.getElementById('bb-reader-divider').style.display = isReader ? 'block' : 'none';
+        document.getElementById('bb-home').classList.toggle('active', name === 'library');
+        if (isReader) { if (typeof expandCurrentChapter === 'function') expandCurrentChapter(0); }
+        if (window.positionStaticPops) window.positionStaticPops(isReader);
+        try { location.hash = name; } catch (e) {}
+    };
+    document.getElementById('db-hide').addEventListener('click', function() {
+        document.getElementById('demo-bar').style.display = 'none';
+    });
+    document.querySelectorAll('#demo-bar button[data-view]').forEach(function(b) {
+        b.addEventListener('click', function() { window.showView(b.getAttribute('data-view')); });
+    });
+    // 浏览器栏
+    document.getElementById('bb-home').addEventListener('click', function() { window.showView('library'); });
+    document.getElementById('bb-toc').addEventListener('click', function() {
+        if (typeof toggleSidebar === 'function') toggleSidebar();
+    });
+    document.getElementById('bb-aux').addEventListener('click', function() { window.showView('notes'); });
+    document.getElementById('bb-concept').addEventListener('click', function() {
+        this.classList.toggle('active');
+    });
+    // 从 hash 恢复初始视图（延迟到后续脚本全部执行完，reader 的目录树已就绪）
+    setTimeout(function() {
+        var h = location.hash.replace('#','');
+        if (V[h]) window.showView(h);
+    }, 0);
+})();
+
+/* ═══════════════════════════════════════════════
+   视图一：Library 交互（演示模式，上传仅提示）
+   ═══════════════════════════════════════════════ */
+(function() {
+    var toast = document.getElementById('toast');
+    function showToast(message, type) {
+        toast.textContent = message;
+        toast.className = 'toast ' + type + ' show';
+        setTimeout(function() { toast.classList.remove('show'); }, 3000);
+    }
+    document.getElementById('addBookBtn').addEventListener('click', function() {
+        showToast('演示模式：请在运行版应用中导入书籍', 'error');
+    });
+})();
+
+/* ═══════════════════════════════════════════════════════
+   视图二：Reader 交互（目录构建 / 折叠上锁 / 侧栏拖拽 / 弹窗）
+   ═══════════════════════════════════════════════════════ */
+var TOTAL = 4;
+var currentChapter = 0;
+var DEMO_TITLES = ['第一章 调查区域', '第二章 家', '第三章 财产与继承', '第四章 职业分化'];
+
+var LOCK_ICON_PIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16,9V4h1c0.55,0 1,-0.45 1,-1v0c0,-0.55 -0.45,-1 -1,-1H7C6.45,2 6,2.45 6,3v0c0,0.55 0.45,1 1,1h1v5c0,1.66 -1.34,3 -3,3v2h5.97v7l1,1l1,-1v-7H19v-2C17.34,12 16,10.66 16,9z"/></svg>';
+var LOCK_ICON_UNPIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16,9V4h1c0.55,0 1,-0.45 1,-1v0c0,-0.55 -0.45,-1 -1,-1H7C6.45,2 6,2.45 6,3v0c0,0.55 0.45,1 1,1h1v5c0,1.66 -1.34,3 -3,3v2h5.97v7l1,1l1,-1v-7H19v-2C17.34,12 16,10.66 16,9z M14.83,4H9.17v4.37c0,1.32 -0.83,2.42 -2,2.83V13h9.66v-1.8C16.66,10.79 15.83,9.69 15.83,8.37V4z"/></svg>';
+
+// ── 示例目录树（对应阅读页左侧目录） ──
+var tocTree = [
+    { title: '第一章 调查区域', href: 'ch1.html', children: [
+        { title: '一、江村概况', href: 'ch1.html#s1', children: [] },
+        { title: '二、土地关系', href: 'ch1.html#s2', children: [] },
+        { title: '三、亲属与家庭', href: 'ch1.html#s3', children: [] }
+    ]},
+    { title: '第二章 家', href: 'ch2.html', children: [
+        { title: '第一节 家庭结构', href: 'ch2.html#s1', children: [] },
+        { title: '第二节 亲属关系', href: 'ch2.html#s2', children: [] }
+    ]},
+    { title: '第三章 财产与继承', href: 'ch3.html', children: [] },
+    { title: '第四章 职业分化', href: 'ch4.html', children: [
+        { title: '第一节 农业', href: 'ch4.html#s1', children: [] },
+        { title: '第二节 蚕桑与纺织', href: 'ch4.html#s2', children: [] }
+    ]}
+];
+
+function toggleCollapse(el, toggle) {
+    if (!el) return;
+    if (el.classList.contains('collapsed')) {
+        el.classList.remove('collapsed');
+        el.style.maxHeight = el.scrollHeight + 'px';
+        if (toggle) toggle.classList.add('open');
+        setTimeout(function() { el.style.maxHeight = ''; }, 50);
+    } else {
+        el.style.maxHeight = el.scrollHeight + 'px';
+        void el.offsetHeight;
+        el.classList.add('collapsed');
+        if (toggle) toggle.classList.remove('open');
+    }
+}
+function makeFoldHandler(el, toggle) {
+    return function(e) {
+        e.stopPropagation();
+        if (!el) return;
+        el._locked = el.classList.contains('collapsed');
+        toggleCollapse(el, toggle);
+        updateLockIcon(el);
+    };
+}
+function updateLockIcon(el) {
+    var icon = el._lockEl;
+    if (!icon) return;
+    icon.innerHTML = el._locked ? LOCK_ICON_PIN : LOCK_ICON_UNPIN;
+    icon.classList.toggle('locked', !!el._locked);
+}
+function hasLockedDescendant(el) {
+    return !!el.querySelector('.lock-icon.locked');
+}
+function addLockIcon(row, el, toggle) {
+    el._toggleEl = toggle;
+    var icon = document.createElement('span');
+    icon.className = 'lock-icon';
+    icon.title = '点击锁定/解锁（锁定后不会被自动折叠）';
+    icon.onclick = function(e) { e.stopPropagation(); toggleLock(el); };
+    row.appendChild(icon);
+    el._lockEl = icon;
+    updateLockIcon(el);
+}
+function toggleLock(el) {
+    el._locked = !el._locked;
+    if (el._locked) {
+        if (el.classList.contains('collapsed')) toggleCollapse(el, el._toggleEl);
+    } else if (!el.classList.contains('collapsed')) {
+        toggleCollapse(el, el._toggleEl);
+    }
+    updateLockIcon(el);
+}
+function setupLinkInteractions(link, doNav, lockTarget) {
+    if (!lockTarget) {
+        link.addEventListener('click', function(e) { if (e.button !== 0) return; e.preventDefault(); doNav(); });
+        return;
+    }
+    var timer = null;
+    link.addEventListener('click', function(e) {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        if (timer) { clearTimeout(timer); timer = null; return; }
+        timer = setTimeout(function() { timer = null; doNav(); }, 250);
+    });
+    link.addEventListener('dblclick', function(e) {
+        e.preventDefault();
+        if (timer) { clearTimeout(timer); timer = null; }
+        toggleLock(lockTarget);
+    });
+}
+function buildSections(children, container, chapterIdx, depth, parentEl) {
+    for (var i = 0; i < children.length; i++) {
+        var s = children[i];
+        var hasKids = s.children && s.children.length > 0;
+        var row = document.createElement('div');
+        row.className = 'sec-row d' + depth;
+        var stoggle = document.createElement('span');
+        stoggle.className = 'sec-toggle';
+        stoggle.textContent = hasKids ? '\u25B8' : '';
+        stoggle.style.visibility = hasKids ? 'visible' : 'hidden';
+        row.appendChild(stoggle);
+        var link = document.createElement('a');
+        link.className = 'sec-link d' + depth;
+        link.textContent = s.title;
+        link.href = '#';
+        var anchor = (s.href || '').split('#')[1] || '';
+        link.setAttribute('data-anchor', anchor);
+        link._parentSection = parentEl;
+        var doSectionNav = function() {
+            window.demoNavTo(chapterIdx);
+            var el = document.getElementById(anchor);
+            if (el && typeof scrollToSection === 'function') scrollToSection(anchor);
+        };
+        row.appendChild(link);
+        container.appendChild(row);
+        if (hasKids) {
+            var kids = document.createElement('div');
+            kids.className = 'sec-kids collapsed';
+            stoggle.onclick = makeFoldHandler(kids, stoggle);
+            addLockIcon(row, kids, stoggle);
+            setupLinkInteractions(link, doSectionNav, kids);
+            buildSections(s.children, kids, chapterIdx, depth + 1, link);
+            container.appendChild(kids);
+        } else {
+            setupLinkInteractions(link, doSectionNav, null);
+        }
+    }
+}
+function buildChapter(ch, idx) {
+    var div = document.createElement('div');
+    div.className = 'ch-item';
+    var hasKids = ch.children && ch.children.length > 0;
+    var box = document.createElement('div');
+    box.className = 'section-box';
+    var row = document.createElement('div');
+    row.className = 'ch-row';
+    var toggle = document.createElement('span');
+    toggle.className = 'ch-toggle';
+    toggle.style.visibility = hasKids ? 'visible' : 'hidden';
+    toggle.onclick = makeFoldHandler(box, toggle);
+    for (var s = 0; s < 4; s++) { var sq = document.createElement('i'); toggle.appendChild(sq); }
+    row.appendChild(toggle);
+    var link = document.createElement('a');
+    link.className = 'ch-link';
+    link.textContent = ch.title;
+    link.href = '#';
+    row.appendChild(link);
+    div.appendChild(row);
+    if (hasKids) {
+        box.classList.add('collapsed');
+        buildSections(ch.children, box, idx, 1, null);
+        addLockIcon(row, box, toggle);
+        setupLinkInteractions(link, function() { window.demoNavTo(idx); }, box);
+    } else {
+        box.style.display = 'none';
+        setupLinkInteractions(link, function() { window.demoNavTo(idx); }, null);
+    }
+    div.appendChild(box);
+    div._sectionBox = box;
+    div._toggle = toggle;
+    return div;
+}
+function buildToc() {
+    var root = document.getElementById('toc-tree');
+    root.innerHTML = '';
+    for (var i = 0; i < tocTree.length; i++) root.appendChild(buildChapter(tocTree[i], i));
+}
+buildToc();
+var tocItems = document.querySelectorAll('#toc-tree > .ch-item');
+
+function expandCurrentChapter(idx) {
+    tocItems.forEach(function(div, i) {
+        var link = div.querySelector('.ch-link');
+        if (link) link.classList.toggle('active', i === idx);
+        var box = div._sectionBox;
+        var isCurrent = (i === idx);
+        if (box) {
+            if (isCurrent) {
+                if (box.classList.contains('collapsed')) toggleCollapse(box, div._toggle);
+            } else if (!box.classList.contains('collapsed') && !box._locked && !hasLockedDescendant(box)) {
+                toggleCollapse(box, div._toggle);
+            }
+        }
+        var tgl = div._toggle;
+        if (tgl) tgl.classList.toggle('open', (isCurrent && box && !box.classList.contains('collapsed')));
+    });
+}
+expandCurrentChapter(0);
+
+function scrollToSection(anchor) {
+    var el = document.getElementById(anchor);
+    if (!el) return;
+    var mainEl = document.getElementById('main');
+    var mt = mainEl.getBoundingClientRect().top;
+    mainEl.scrollTop = Math.max(0, el.getBoundingClientRect().top - mt + mainEl.scrollTop - 90);
+}
+
+// 章导航（演示：仅切换标题）
+window.demoNavTo = function(idx) {
+    currentChapter = idx;
+    document.getElementById('ch-title').textContent = DEMO_TITLES[idx] || ('第 ' + (idx + 1) + ' 章');
+    document.getElementById('ch-nav-label').textContent = (idx + 1) + ' / ' + TOTAL;
+    document.getElementById('ch-nav-prev').style.visibility = idx > 0 ? 'visible' : 'hidden';
+    document.getElementById('ch-nav-next').style.visibility = idx < TOTAL - 1 ? 'visible' : 'hidden';
+    expandCurrentChapter(idx);
+    var mainEl = document.getElementById('main');
+    mainEl.scrollTop = 0;
+};
+window.demoNav = function(delta) {
+    var next = currentChapter + delta;
+    if (next < 0 || next >= TOTAL) return;
+    window.demoNavTo(next);
+};
+
+// ── 侧栏：折叠 / 拖拽调宽 ──
+var sideWrap = document.getElementById('side-wrap');
+var SIDEBAR_MIN = 180;
+function setSidebarWidth(w, animate) {
+    sideWrap.style.transition = animate ? '' : 'none';
+    sideWrap.style.width = w + 'px';
+}
+function toggleSidebar() {
+    var collapsed = sideWrap.classList.toggle('collapsed');
+    if (collapsed) { sideWrap.style.width = ''; sideWrap.style.transition = ''; }
+    else { setSidebarWidth(280, true); }
+}
+window.toggleSidebar = toggleSidebar;
+(function initSidebarResize() {
+    var rs = document.getElementById('resizer');
+    var dragging = false, startX = 0, startW = 0;
+    rs.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        dragging = true; startX = e.clientX; startW = sideWrap.offsetWidth;
+        setSidebarWidth(startW, false);
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+    });
+    document.addEventListener('mousemove', function(e) {
+        if (!dragging) return;
+        var w = Math.max(SIDEBAR_MIN, Math.min(startW + e.clientX - startX, window.innerWidth - 160));
+        setSidebarWidth(w, false);
+    });
+    document.addEventListener('mouseup', function() {
+        if (!dragging) return;
+        dragging = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+    });
+})();
+
+/* ── 书签 / 弹窗自动定位：锚定 mark，正文右缘，clamp 到视口 ── */
+function positionStaticPops(autoScroll) {
+    var view = document.getElementById('chapter-view');
+    if (!view) return;
+    var vRect = view.getBoundingClientRect();
+    var content = document.getElementById('ch-content');
+    var cRect = content.getBoundingClientRect();
+    var vw = window.innerWidth, vh = window.innerHeight;
+    // 书签垂直居中于选中字段（书签高 27 → 偏移 14）
+    var bm1 = document.getElementById('bm1');
+    var semMark = document.querySelector('.view-reader mark.semantic-hl');
+    if (bm1 && semMark) {
+        var mRect = semMark.getBoundingClientRect();
+        bm1.style.top = (mRect.top - vRect.top + (mRect.height / 2) - 14) + 'px';
+    }
+    // 弹窗：正文右缘 + 1-2 字符，顶部对齐锚点，clamp 到可视区
+    document.querySelectorAll('.view-reader .semantic-pop').forEach(function(pop) {
+        var anchorId = pop.getAttribute('data-anchor');
+        var anchor = anchorId && document.getElementById(anchorId);
+        if (!anchor) return;
+        var aRect = anchor.getBoundingClientRect();
+        var pw = pop.offsetWidth || 320, ph = pop.offsetHeight || 400;
+        var l = cRect.right - vRect.left + 16;   // 正文右缘 + 1-2 字符
+        var t = aRect.top - vRect.top - 6;
+        // clamp 到视口（相对 chapter-view 坐标）
+        var maxL = vw - vRect.left - pw - 8;
+        var maxT = vh - vRect.top - ph - 8;
+        l = Math.max(8, Math.min(l, maxL));
+        t = Math.max(60, Math.min(t, maxT));
+        pop.style.left = l + 'px';
+        pop.style.top = t + 'px';
+    });
+    // 进入阅读页时：若书签/弹窗不在首屏，滚动正文使其居中（Axure 采集首屏可见）
+    if (autoScroll && bm1) {
+        var br = bm1.getBoundingClientRect();
+        if (br.bottom > vh || br.top < 0) {
+            try { bm1.scrollIntoView({ block: 'center' }); } catch (e) { bm1.scrollIntoView(); }
+        }
+    }
+}
+window.positionStaticPops = positionStaticPops;
+
+/* ── 弹窗通用交互：图钉 / 拖动 / 拉伸 / 置顶 / 悬停显示 ── */
+(function() {
+    var _popZ = 600;
+    var _popDrag = null, _popResize = null;
+
+    function bringToFront(pop) {
+        pop.style.zIndex = ++_popZ;
+    }
+    document.querySelectorAll('.view-reader .semantic-pop').forEach(function(pop) {
+        var pin = pop.querySelector('.sp-pin');
+        if (pin) {
+            pin.innerHTML = LOCK_ICON_UNPIN;
+            pin.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var locked = !pin.classList.contains('locked');
+                pin.classList.toggle('locked', locked);
+                pin.innerHTML = locked ? LOCK_ICON_PIN : LOCK_ICON_UNPIN;
+                pop._locked = locked;
+            });
+        }
+        var move = pop.querySelector('.sp-move');
+        if (move) {
+            move.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                pop.classList.add('dragging');
+                bringToFront(pop);
+                _popDrag = { pop: pop, sx: e.clientX, sy: e.clientY,
+                             lx: parseFloat(pop.style.left) || 0, ty: parseFloat(pop.style.top) || 0 };
+            });
+        }
+        var rs = pop.querySelector('.sp-resize');
+        if (rs) {
+            rs.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                bringToFront(pop);
+                _popResize = { pop: pop, sx: e.clientX, sy: e.clientY, sw: pop.offsetWidth, sh: pop.offsetHeight };
+                document.body.style.cursor = 'nwse-resize';
+            });
+        }
+        pop.addEventListener('mousedown', function() { bringToFront(pop); });
+    });
+
+    document.addEventListener('mousemove', function(e) {
+        if (_popDrag) {
+            var d = _popDrag;
+            d.pop.style.left = (d.lx + e.clientX - d.sx) + 'px';
+            d.pop.style.top = (d.ty + e.clientY - d.sy) + 'px';
+            return;
+        }
+        if (_popResize) {
+            var r = _popResize;
+            r.pop.style.width = (r.sw + e.clientX - r.sx) + 'px';
+            r.pop.style.height = (r.sh + e.clientY - r.sy) + 'px';
+        }
+    });
+    document.addEventListener('mouseup', function() {
+        if (_popDrag) { _popDrag.pop.classList.remove('dragging'); _popDrag = null; }
+        if (_popResize) { _popResize = null; document.body.style.cursor = ''; }
+    });
+
+    // mark 悬停显示 / 移开关闭（概念弹窗；语义弹窗由书签控制）
+    var closeTimer = null;
+    document.getElementById('ch-content').addEventListener('mouseover', function(e) {
+        var m = e.target.closest ? e.target.closest('mark.concept-hl') : null;
+        if (!m) return;
+        var popId = m.getAttribute('data-pop');
+        var pop = popId && document.getElementById(popId);
+        if (pop && !pop._locked) {
+            if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+            pop.style.display = 'flex';
+            bringToFront(pop);
+        }
+    });
+    document.getElementById('ch-content').addEventListener('mouseout', function(e) {
+        var m = e.target.closest ? e.target.closest('mark.concept-hl') : null;
+        if (!m) return;
+        var popId = m.getAttribute('data-pop');
+        var pop = popId && document.getElementById(popId);
+        if (pop && !pop._locked) {
+            if (closeTimer) clearTimeout(closeTimer);
+            closeTimer = setTimeout(function() { pop.style.display = 'none'; }, 400);
+        }
+    });
+    // 语义书签：悬停显示 / 移开关闭 / 点击切换
+    var bm1 = document.getElementById('bm1');
+    var popSem = document.getElementById('pop-sem1');
+    if (bm1 && popSem) {
+        function showSem() { if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; } popSem.style.display = 'flex'; bringToFront(popSem); }
+        function hideSem() {
+            if (popSem._locked) return;
+            if (closeTimer) clearTimeout(closeTimer);
+            closeTimer = setTimeout(function() { popSem.style.display = 'none'; }, 400);
+        }
+        bm1.addEventListener('mouseenter', showSem);
+        bm1.addEventListener('mouseleave', hideSem);
+        bm1.addEventListener('click', function() {
+            if (popSem.style.display === 'none') { showSem(); bm1.classList.add('active'); }
+            else { hideSem(); bm1.classList.remove('active'); }
+        });
+        popSem.addEventListener('mouseenter', function() { if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; } });
+        popSem.addEventListener('mouseleave', hideSem);
+    }
+    // 缩放时重定位（防抖）
+    var _rz;
+    window.addEventListener('resize', function() {
+        clearTimeout(_rz);
+        _rz = setTimeout(function() { positionStaticPops(); }, 200);
+    });
+})();
+
+// 首次加载完成后定位一次（自动滚动到书签/弹窗）
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { setTimeout(function() { positionStaticPops(true); }, 60); });
+} else {
+    setTimeout(function() { positionStaticPops(true); }, 60);
+}
+
+/* ═══════════════════════════════════════════════
+   视图三：Notes 交互（四层级切换 / 章节列表 / 编辑保存 / 语义概念条目）
+   ═══════════════════════════════════════════════ */
+(function() {
+    var CHAPTERS = [
+        { idx: 0, title: '第一章 调查区域' },
+        { idx: 1, title: '第二章 家' },
+        { idx: 2, title: '第三章 财产与继承' },
+        { idx: 3, title: '第四章 职业分化' }
+    ];
+    var CHAPTER_CONTENT = [
+        '<p>本章交代调查区域的地理、人口与经济背景。</p><h3>要点</h3><ul><li>太湖流域稻作农业带；水道交通。</li><li>全村约三百六十户，农桑兼营。</li></ul>',
+        '<p>家庭的结构、规模与亲属称谓在本章展开。</p><h3>要点</h3><ul><li>核心家庭与扩大家庭的并存。</li><li>“同灶吃饭”作为家庭边界。</li></ul>',
+        '<p>田底权与田面权的分离是本章重点。</p><h3>要点</h3><ul><li>租佃关系中的权利划分。</li><li>继承规则与分家。</li></ul>',
+        '<p>乡村工业与职业分化的进程。</p><h3>要点</h3><ul><li>蚕桑业对家庭经济的补充。</li><li>职业分化对家庭结构的影响。</li></ul>'
+    ];
+    var _semItems = [
+        '家庭这一社会组织在此地呈现出从生产单元向消费单元转变的趋势，并随职业分化而不断调整其结构。'
+    ];
+    var _semDetail = '<p><strong>解析：</strong>传统社会中家庭同时是生产与消费组织；随着乡村工业发展，生产功能外移，家庭逐渐成为消费单元。</p>';
+    var _conItems = [
+        { term: '江村', detail: '<p>江村，即江苏省吴江县开弦弓村，费孝通《江村经济》的调查地点。</p><p><strong>要点：</strong>作者为保护隐私使用代称；该村是理解二十世纪三十年代江南农村经济的典型样本。</p>' },
+        { term: '田底权 / 田面权', detail: '<p>江南水乡特有的地权安排：田底权属地主（收租），田面权属佃户（耕作），二者可独立转让。</p>' }
+    ];
+    var current = CHAPTERS[0];
+    var _semCur = 0, _conCur = 0;
+
+    window.switchLevel = function(level) {
+        document.querySelectorAll('.level-nav .lv').forEach(function(b) {
+            b.classList.toggle('active', b.getAttribute('data-level') === level);
+        });
+        document.querySelectorAll('.lvl').forEach(function(el) {
+            el.classList.toggle('active', el.getAttribute('data-level') === level);
+        });
+    };
+
+    function renderSideList(listEl, items, mkLabel, onPick) {
+        listEl.innerHTML = '';
+        items.forEach(function(it, i) {
+            var btn = document.createElement('button');
+            btn.className = 'ch-item';
+            btn.setAttribute('data-idx', i);
+            var no = document.createElement('span');
+            no.className = 'no';
+            no.textContent = (i + 1);
+            var name = document.createElement('span');
+            name.textContent = mkLabel(it, i);
+            btn.appendChild(no);
+            btn.appendChild(name);
+            btn.addEventListener('click', function() { onPick(it, i); });
+            listEl.appendChild(btn);
+        });
+    }
+
+    // L2 章节
+    renderSideList(document.getElementById('nb-ch-list'), CHAPTERS, function(c){ return c.title; },
+        function(ch, i) {
+            current = ch;
+            document.querySelectorAll('#nb-ch-list .ch-item').forEach(function(b) {
+                b.classList.toggle('active', parseInt(b.getAttribute('data-idx'),10) === i);
+            });
+            document.getElementById('nb-ch-name').textContent = ch.title;
+            document.getElementById('nb-ch-body').dataset.md = CHAPTER_CONTENT[i];
+            document.getElementById('nb-ch-body').innerHTML = window.renderMarkdown(CHAPTER_CONTENT[i]);
+            document.getElementById('nb-ch-edit-btn').disabled = false;
+        });
+    // 默认选中第一章
+    document.querySelectorAll('#nb-ch-list .ch-item').forEach(function(b) {
+        b.classList.toggle('active', parseInt(b.getAttribute('data-idx'),10) === 0);
+    });
+
+    // L3 语义
+    document.getElementById('nb-sem-count').textContent = _semItems.length ? (_semItems.length + ' 条') : '';
+    renderSideList(document.getElementById('nb-sem-list'), _semItems, function(it, i){ return '语义 · ' + (i+1); },
+        function(it, i) {
+            _semCur = i;
+            document.querySelectorAll('#nb-sem-list .ch-item').forEach(function(b) {
+                b.classList.toggle('active', parseInt(b.getAttribute('data-idx'),10) === i);
+            });
+            document.getElementById('nb-sem-name').textContent = '语义 · ' + (i+1);
+            document.getElementById('nb-sem-body').innerHTML = window.renderMarkdown(it + '\n\n' + _semDetail);
+        });
+    // 默认选中第一条（内容已预渲染，保持静态即可）
+
+    // L4 概念
+    document.getElementById('nb-con-count').textContent = _conItems.length ? (_conItems.length + ' 条') : '';
+    renderSideList(document.getElementById('nb-con-list'), _conItems, function(it){ return it.term; },
+        function(it, i) {
+            _conCur = i;
+            document.querySelectorAll('#nb-con-list .ch-item').forEach(function(b) {
+                b.classList.toggle('active', parseInt(b.getAttribute('data-idx'),10) === i);
+            });
+            document.getElementById('nb-con-name').textContent = it.term;
+            document.getElementById('nb-con-body').innerHTML = window.renderMarkdown(it.detail);
+        });
+
+    // 编辑 / 保存（全书层与章节层共用，纯前端演示）
+    function enterEdit(kind) {
+        var isBook = kind === 'book';
+        var body = document.getElementById(isBook ? 'nb-book-body' : 'nb-ch-body');
+        var editor = document.getElementById(isBook ? 'nb-book-editor' : 'nb-ch-editor');
+        var editBtn = document.getElementById(isBook ? 'nb-book-edit-btn' : 'nb-ch-edit-btn');
+        var actions = document.getElementById(isBook ? 'nb-book-actions' : 'nb-ch-actions');
+        var isPlaceholder = body.classList.contains('empty');
+        editor.value = isPlaceholder ? '' : (body.dataset.md || body.textContent);
+        body.style.display = 'none';
+        editor.style.display = 'block';
+        actions.style.display = 'flex';
+        editBtn.style.display = 'none';
+        editor.focus();
+    }
+    function exitEdit(kind, save) {
+        var isBook = kind === 'book';
+        var body = document.getElementById(isBook ? 'nb-book-body' : 'nb-ch-body');
+        var editor = document.getElementById(isBook ? 'nb-book-editor' : 'nb-ch-editor');
+        var editBtn = document.getElementById(isBook ? 'nb-book-edit-btn' : 'nb-ch-edit-btn');
+        var actions = document.getElementById(isBook ? 'nb-book-actions' : 'nb-ch-actions');
+        if (save) {
+            body.dataset.md = editor.value || '';
+            if (editor.value) {
+                body.innerHTML = window.renderMarkdown(editor.value);
+                body.classList.add('md');
+                body.classList.remove('empty');
+            } else {
+                body.textContent = '（暂无内容）';
+                body.classList.add('empty');
+            }
+        }
+        body.style.display = '';
+        editor.style.display = 'none';
+        actions.style.display = 'none';
+        editBtn.style.display = '';
+    }
+    document.getElementById('nb-book-edit-btn').addEventListener('click', function() { enterEdit('book'); });
+    document.getElementById('nb-book-save-btn').addEventListener('click', function() { exitEdit('book', true); });
+    document.getElementById('nb-book-cancel-btn').addEventListener('click', function() { exitEdit('book', false); });
+    document.getElementById('nb-ch-edit-btn').addEventListener('click', function() { enterEdit('chapter'); });
+    document.getElementById('nb-ch-save-btn').addEventListener('click', function() { exitEdit('chapter', true); });
+    document.getElementById('nb-ch-cancel-btn').addEventListener('click', function() { exitEdit('chapter', false); });
+
+    // 预填 data-md（供编辑回填原 Markdown）
+    var bBody = document.getElementById('nb-book-body');
+    bBody.dataset.md = bBody.innerHTML;
+    var cBody = document.getElementById('nb-ch-body');
+    cBody.dataset.md = CHAPTER_CONTENT[0];
+})();
+</script>
+</body>
+</html>

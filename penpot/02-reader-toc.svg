@@ -1,0 +1,235 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" font-family="'PingFang SC','Microsoft YaHei','Noto Sans CJK SC',sans-serif">
+  <title>02 阅读页 · 目录展开态（真实数据）</title>
+  <rect width="1920" height="1080" fill="#fff"/>
+  <g id="page">
+    <title>白色背景页（整页容器 · 对应 body）</title>
+  <g id="browser-bar">
+    <title>浏览器外壳侧边栏（52px）</title>
+    <rect x="0" y="0" width="52" height="1080" fill="#eceff1"/>
+    <line x1="51.5" y1="0" x2="51.5" y2="1080" stroke="#d5d9dd"/>
+    <g id="bb-home">
+      <title>主页 Library</title>
+      <rect x="10" y="10" width="32" height="32" rx="6" fill="#fff" stroke="#d5d9dd"/>
+      <text x="26" y="31" text-anchor="middle" font-size="14" font-weight="bold" fill="#4a5560">L</text>
+    </g>
+    <line x1="10" y1="54" x2="42" y2="54" stroke="#d5d9dd"/>
+    <g id="bb-toc">
+      <title>目录（激活 · 点击折叠/展开侧栏）</title>
+      <rect x="10" y="64" width="32" height="32" rx="6" fill="#5b9bd5"/>
+      <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" transform="translate(18 72) scale(0.6667)" fill="#fff"/>
+    </g>
+    <g id="bb-aux">
+      <title>辅助键（跳转笔记页）</title>
+      <rect x="10" y="102" width="32" height="32" rx="6" fill="#fff" stroke="#d5d9dd"/>
+      <path d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z" transform="translate(18 110) scale(0.6667)" fill="#4a5560"/>
+    </g>
+    <g id="bb-concept">
+      <title>解释笔（开关划词）</title>
+      <rect x="10" y="140" width="32" height="32" rx="6" fill="#fff" stroke="#d5d9dd"/>
+      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" transform="translate(18 148) scale(0.6667)" fill="#4a5560"/>
+    </g>
+  </g>
+  <g transform="translate(52 0)">
+    <title>目录侧栏（真实数据 · 290px 展开态）</title>
+    <g id="side-wrap">
+    <rect x="0" y="0" width="290" height="1080" fill="#f8f9fa"/>
+    <line x1="289.5" y1="0" x2="289.5" y2="1080" stroke="#e9ecef"/>
+    <g id="panel-header">
+      <text x="12" y="26" font-size="12.8" font-weight="bold" fill="#868e96" letter-spacing="0.5">目 录</text>
+      <line x1="12" y1="32" x2="278" y2="32" stroke="#dee2e6"/>
+    </g>
+    <g id="toc-tree">
+    <g id="ch" data-title="《当代学术棱镜译丛》总序">
+      <rect x="20" y="53.22" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="53.22" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="20" y="60.22" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="60.22" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <text x="51" y="62" font-size="14.4" fill="#495057">《当代学术棱镜译丛》总序</text>
+    </g>
+    <g id="ch" data-title="目录">
+      <rect x="20" y="88.66" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="88.66" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="20" y="95.66" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="95.66" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <text x="51" y="97.4" font-size="14.4" fill="#495057">目录</text>
+    </g>
+    <g id="ch" data-title="导言：作为科学体系第一部">
+      <rect x="41" y="114.88" width="218" height="48.9" fill="#3498db" rx="4"/>
+      <rect x="20" y="124.1" width="4" height="4" fill="#3498db" opacity="1" rx="1"/>
+      <rect x="27" y="124.1" width="4" height="4" fill="#3498db" opacity="1" rx="1"/>
+      <rect x="20" y="131.1" width="4" height="4" fill="#3498db" opacity="1" rx="1"/>
+      <rect x="27" y="131.1" width="4" height="4" fill="#3498db" opacity="1" rx="1"/>
+      <text x="51" y="132.9" font-size="14.4" font-weight="bold" fill="#fff">导言：作为科学体系第一部分的</text>
+      <text x="51" y="152.3" font-size="14.4" font-weight="bold" fill="#fff">《精神现象学》的任务</text>
+      <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V7a3 3 0 0 1 3-3z" transform="translate(259 130.32) scale(0.72)" fill="#fff" opacity="0.85"/>
+    </g>
+    <rect x="12" y="167.76" width="265" height="226.9" fill="#fbfcfd" stroke="#e9ecef" rx="6"/>
+      <text x="51" y="188.8" font-size="13.6" fill="#4a5568">第一节　现象学体系和哲学全书体系</text>
+      <path d="M4 0 L12 0 L8 8 Z" transform="translate(31.0 211.76)" fill="#6c757d" opacity="0.55"/>
+      <text x="51" y="216.8" font-size="13.6" fill="#4a5568">第二节　黑格尔对科学体系的理解</text>
+      <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V7a3 3 0 0 1 3-3z" transform="translate(259 205.76) scale(0.72)" fill="#6c757d" opacity="0.3"/>
+      <text x="65" y="244.3" font-size="13.12" fill="#4a5568">a）哲学作为“科学”</text>
+      <text x="65" y="272.3" font-size="13.12" fill="#4a5568">b）绝对的和相对的知识；哲学作为</text>
+      <text x="65" y="290.0" font-size="13.12" fill="#4a5568">科学的体系</text>
+      <path d="M0 4 L8 4 L4 12 Z" transform="translate(34.0 316.54)" fill="#6c757d" opacity="0.35"/>
+      <text x="51" y="316.2" font-size="13.6" fill="#4a5568">第三节　标明体系第一部分特征的</text>
+      <text x="51" y="334.5" font-size="13.6" fill="#4a5568">两个标题的意义</text>
+      <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V7a3 3 0 0 1 3-3z" transform="translate(259 313.54) scale(0.72)" fill="#6c757d" opacity="0.3"/>
+      <path d="M0 4 L8 4 L4 12 Z" transform="translate(34.0 361.26)" fill="#6c757d" opacity="0.35"/>
+      <text x="51" y="360.9" font-size="13.6" fill="#4a5568">第四节　《精神现象学》作为体系</text>
+      <text x="51" y="379.3" font-size="13.6" fill="#4a5568">之第一部分的内在任务</text>
+      <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V7a3 3 0 0 1 3-3z" transform="translate(259 358.26) scale(0.72)" fill="#6c757d" opacity="0.3"/>
+    <g id="ch" data-title="预先考察">
+      <rect x="20" y="411.84000000000003" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="411.84000000000003" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="20" y="418.84000000000003" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="418.84000000000003" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <text x="51" y="420.6" font-size="14.4" fill="#495057">预先考察</text>
+      <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V7a3 3 0 0 1 3-3z" transform="translate(259 408.34000000000003) scale(0.72)" fill="#6c757d" opacity="0.3"/>
+    </g>
+    <g id="ch" data-title="第一章　感性确定性">
+      <rect x="20" y="447.28000000000003" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="447.28000000000003" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="20" y="454.28000000000003" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="454.28000000000003" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <text x="51" y="456.1" font-size="14.4" fill="#495057">第一章　感性确定性</text>
+      <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V7a3 3 0 0 1 3-3z" transform="translate(259 443.78000000000003) scale(0.72)" fill="#6c757d" opacity="0.3"/>
+    </g>
+    <g id="ch" data-title="第二章　知觉">
+      <rect x="20" y="482.72" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="482.72" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="20" y="489.72" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="489.72" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <text x="51" y="491.5" font-size="14.4" fill="#495057">第二章　知觉</text>
+      <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V7a3 3 0 0 1 3-3z" transform="translate(259 479.22) scale(0.72)" fill="#6c757d" opacity="0.3"/>
+    </g>
+    <g id="ch" data-title="第三章　力和知性">
+      <rect x="20" y="518.16" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="518.16" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="20" y="525.16" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="525.16" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <text x="51" y="526.9" font-size="14.4" fill="#495057">第三章　力和知性</text>
+      <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V7a3 3 0 0 1 3-3z" transform="translate(259 514.66) scale(0.72)" fill="#6c757d" opacity="0.3"/>
+    </g>
+    <g id="ch" data-title="第二部分：自我意识(1)">
+      <rect x="20" y="553.6" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="553.6" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="20" y="560.6" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="560.6" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <text x="51" y="562.4" font-size="14.4" fill="#495057">第二部分：自我意识(1)</text>
+      <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V7a3 3 0 0 1 3-3z" transform="translate(259 550.1) scale(0.72)" fill="#6c757d" opacity="0.3"/>
+    </g>
+    <g id="ch" data-title="结论">
+      <rect x="20" y="589.0400000000001" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="589.0400000000001" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="20" y="596.0400000000001" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="596.0400000000001" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <text x="51" y="597.8" font-size="14.4" fill="#495057">结论</text>
+    </g>
+    <g id="ch" data-title="编者后记">
+      <rect x="20" y="624.4800000000001" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="624.4800000000001" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="20" y="631.4800000000001" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="631.4800000000001" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <text x="51" y="633.3" font-size="14.4" fill="#495057">编者后记</text>
+    </g>
+    <g id="ch" data-title="重要词语德-汉对照表(1">
+      <rect x="20" y="659.9200000000002" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="659.9200000000002" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="20" y="666.9200000000002" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <rect x="27" y="666.9200000000002" width="4" height="4" fill="#495057" opacity="0.5" rx="1"/>
+      <text x="51" y="668.7" font-size="14.4" fill="#495057">重要词语德-汉对照表(1)</text>
+      <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V7a3 3 0 0 1 3-3z" transform="translate(259 656.4200000000002) scale(0.72)" fill="#6c757d" opacity="0.3"/>
+    </g>
+    </g>
+  </g>
+  </g>
+  <g id="main">
+    <title>正文区（#main）</title>
+    <g id="chapter-view">
+      <title>章视图（max-width 700 + padding 40）</title>
+      <g id="ch-title-bar">
+        <title>章标题栏（position:sticky 吸顶）</title>
+        <rect x="574" y="0" width="700" height="56" fill="#fff"/>
+        <line x1="574" y1="56" x2="1274" y2="56" stroke="#3498db" stroke-width="2"/>
+        <text x="574" y="36" font-size="24" font-weight="bold" fill="#1a1a2e">导言：作为科学体系第一部分的《精神现象学》的任务</text>
+      </g>
+      <g id="ch-content">
+        <title>正文内容（15.5px / 行高 28px）</title>
+        <g id="h1-chapter">
+          <title>章标题（h1）</title>
+          <text x="574" y="92" font-size="24" font-weight="bold" fill="#1a1a2e">导言：作为科学体系第一部分的《精神现象学》的任务</text>
+        </g>
+        <g id="p-1">
+          <title>第 1 段</title>
+          <text x="574" y="128">下面的讲座是对黑格尔著作的解释，我们都很熟知这部被冠以《</text>
+          <text x="574" y="154">精神现象学》标题的著作。通过对标题及其各种不同文稿措辞的</text>
+          <text x="574" y="180">讲解，我们力求先对这部著作做一个无法回避的临时性说明，以</text>
+          <text x="574" y="206">便随即着手进行解释，更确切地说，绕过长篇的序言和导言，从</text>
+          <text x="574" y="232">事实本身开始的地方进行解释。</text>
+        </g>
+        <g id="p-2">
+          <title>第 2 段</title>
+          <text x="574" y="268">这部著作通行的标题“精神现象学”当然不是原初的标题；自从</text>
+          <text x="574" y="294">这个标题在1832年之后被黑格尔的朋友们采纳以来，的确对著</text>
+          <text x="574" y="320">作产生了明显的字面影响。</text>
+        </g>
+        <g id="p-3">
+          <title>第 3 段</title>
+          <text x="574" y="356">《精神现象学》首次出版于1807年，完整标题是“科学的体系，</text>
+          <text x="574" y="382">第一部分，精神现象学”；著作的内容只能从它的这种内在任务</text>
+          <text x="574" y="408">出发才能得到把握。</text>
+        </g>
+        <g id="h2-1">
+          <title>节标题：第一节 现象学体系和哲学全书体系</title>
+          <text x="574" y="456" font-size="20" font-weight="bold" fill="#333">第一节 现象学体系和哲学全书体系</text>
+        </g>
+        <g id="p-4">
+          <title>第 4 段</title>
+          <text x="574" y="492">科学的体系在何种程度上要求《精神现象学》作为第一部分？这个</text>
+          <text x="574" y="518">副标题意味着什么？在我们回答这些问题之前必须提醒，尽管这个</text>
+          <text x="574" y="544">副标题后来变成唯一的标题，但它并不是完整的。</text>
+        </g>
+        <g id="h2-2">
+          <title>节标题：第二节 黑格尔对科学体系的理解</title>
+          <text x="574" y="592" font-size="20" font-weight="bold" fill="#333">第二节 黑格尔对科学体系的理解</text>
+        </g>
+        <g id="p-5">
+          <title>第 5 段</title>
+          <text x="574" y="628">“意识经验的科学”这个表述，此后以“精神现象学的科学”的形式</text>
+          <text x="574" y="654">流传，并最终简化成了流行的“精神现象学”。</text>
+        </g>
+        <g id="h2-3">
+          <title>节标题：第三节 标明体系第一部分特征的两个标题的意义</title>
+          <text x="574" y="702" font-size="20" font-weight="bold" fill="#333">第三节 标明体系第一部分特征的两个标题的意义</text>
+        </g>
+        <g id="p-6">
+          <title>第 6 段</title>
+          <text x="574" y="738">作为“意识经验的科学”，著作展示意识从最直接的感性确定出发、</text>
+          <text x="574" y="764">逐级上升到绝对知识的内在必然过程。</text>
+        </g>
+        <g id="h2-4">
+          <title>节标题：第四节 《精神现象学》作为体系之第一部分的内在任务</title>
+          <text x="574" y="812" font-size="20" font-weight="bold" fill="#333">第四节 《精神现象学》作为体系之第一部分的内在任务</text>
+        </g>
+        <g id="p-7">
+          <title>第 7 段</title>
+          <text x="574" y="848">其内在任务，在于把“实体即主体”的原则落实到意识的全部形态之</text>
+          <text x="574" y="874">中，使其成为体系的第一部分。</text>
+        </g>
+      </g>
+    </g>
+  </g>
+  <g id="ch-nav">
+    <title>底部浮动翻章条</title>
+    <rect x="926" y="1018" width="400" height="42" rx="21" fill="#fff" stroke="#dee2e6"/>
+    <circle cx="952" cy="1039" r="15" fill="#3498db"/>
+    <text x="952" y="1045" text-anchor="middle" font-size="15" fill="#fff">◀</text>
+    <text x="1118" y="1044" text-anchor="middle" font-size="14" fill="#495057">3 / 11</text>
+    <circle cx="1284" cy="1039" r="15" fill="#3498db"/>
+    <text x="1284" y="1045" text-anchor="middle" font-size="15" fill="#fff">▶</text>
+  </g>
+  </g>
+  <text x="52" y="1050" font-size="12" fill="#adb5bd">素材 02 · 阅读页 · 目录展开态（真实数据）｜用途：折叠演示基准板，章/小节全展开</text>
+  <text x="52" y="1068" font-size="12" fill="#adb5bd">接线：章折叠钮→02b · 小节三角→02d · 侧栏→02c · 标注→03 · 滚动→06</text>
+</svg>

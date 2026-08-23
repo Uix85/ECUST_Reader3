@@ -43,6 +43,11 @@ app.include_router(layer_router)
 # HTTP 路由
 # ═══════════════════════════════════════════
 
+# 书库置顶书籍（按目录 id 匹配，顺序即显示顺序；其余书籍保持原顺序）
+PINNED_BOOK_IDS = [
+    "精神现象学 黑格尔着 (精神现象学 黑格尔着.txt) (z-library.sk, 1lib.sk, z-lib.sk)_data",
+]
+
 # ── 书库首页 GET / ──
 @app.get("/", response_class=HTMLResponse)
 async def library_view(request: Request):
@@ -59,6 +64,9 @@ async def library_view(request: Request):
                         "title": book.metadata.title,
                         "author": ", ".join(book.metadata.authors),
                     })
+
+    # 置顶书籍排最前（按 PINNED_BOOK_IDS 顺序），其余保持原顺序（稳定排序）
+    books.sort(key=lambda b: (0, PINNED_BOOK_IDS.index(b["id"])) if b["id"] in PINNED_BOOK_IDS else (1, 0))
 
     return templates.TemplateResponse(request, "library.html", {"books": books})
 

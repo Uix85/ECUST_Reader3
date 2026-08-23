@@ -1,0 +1,169 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" font-family="'PingFang SC','Microsoft YaHei','Noto Sans CJK SC',sans-serif">
+  <!-- ═══ 01 书库页 Library（/）· 1920×1080 16:9 ═══ -->
+  <rect width="1920" height="1080" fill="#f4f4f9"/>
+
+  <!-- ── 浏览器外壳侧边栏 #browser-bar（52px 压缩态 · hover 展开 230px）── -->
+  <g id="browser-bar">
+    <title>浏览器外壳侧边栏（52px）</title>
+    <rect x="0" y="0" width="52" height="1080" fill="#eceff1"/>
+    <line x1="51.5" y1="0" x2="51.5" y2="1080" stroke="#d5d9dd"/>
+    <g id="bb-home">
+      <title>主页 Library</title>
+      <rect x="10" y="10" width="32" height="32" rx="6" fill="#fff" stroke="#d5d9dd"/>
+      <text x="26" y="31" text-anchor="middle" font-size="14" font-weight="bold" fill="#4a5560">L</text>
+    </g>
+    <line x1="10" y1="54" x2="42" y2="54" stroke="#d5d9dd"/>
+    <g id="bb-book-1">
+      <title>书签按钮 · 精神现象学（当前书）</title>
+      <rect x="10" y="64" width="32" height="32" rx="6" fill="#5b9bd5"/>
+      <text x="26" y="86" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">精神</text>
+    </g>
+    <g id="bb-book-2">
+      <title>书签按钮 · 资本论</title>
+      <rect x="10" y="102" width="32" height="32" rx="6" fill="#fff" stroke="#d5d9dd"/>
+      <text x="26" y="124" text-anchor="middle" font-size="13" fill="#4a5560">资本</text>
+    </g>
+    <g id="bb-book-3">
+      <title>书签按钮 · 江村经济</title>
+      <rect x="10" y="140" width="32" height="32" rx="6" fill="#fff" stroke="#d5d9dd"/>
+      <text x="26" y="162" text-anchor="middle" font-size="13" fill="#4a5560">江村</text>
+    </g>
+    <g id="bb-book-4">
+      <title>书签按钮 · 富爸爸穷爸爸</title>
+      <rect x="10" y="178" width="32" height="32" rx="6" fill="#fff" stroke="#d5d9dd"/>
+      <text x="26" y="200" text-anchor="middle" font-size="13" fill="#4a5560">富爸</text>
+    </g>
+  </g>
+
+  <!-- ── 内容区（margin-left:92px）── -->
+  <g id="main">
+    <title>内容区（Library 主区）</title>
+    <!-- 顶部标题栏 -->
+    <g id="topbar">
+      <title>顶部标题栏</title>
+      <text x="92" y="78" font-size="32" font-weight="bold" fill="#333">Library</text>
+      <text x="92" y="106" font-size="14" fill="#868e96">共 5 本书 · 支持导入 EPUB / TXT</text>
+    </g>
+    <!-- 加号按钮 -->
+    <g id="btn-add">
+      <title>导入书籍（+）</title>
+      <circle cx="1720" cy="64" r="22" fill="#3498db"/>
+      <text x="1720" y="73" text-anchor="middle" font-size="26" fill="#fff">+</text>
+    </g>
+
+    <!-- 导入成功 Toast -->
+    <g id="toast-import" transform="translate(1550,14)">
+      <title>导入成功提示</title>
+      <rect width="330" height="46" rx="6" fill="#27ae60"/>
+      <text x="20" y="29" font-size="14" fill="#fff">《精神现象学》导入成功！</text>
+    </g>
+
+    <!-- 书卡片网格（5 本一行，grid auto-fill minmax 250px） -->
+    <!-- 卡片 1 -->
+    <g id="book-card-1">
+      <title>书卡片 · 精神现象学（Read Book = 蓝底 + 文字相邻）</title>
+      <rect x="92" y="150" width="320" height="210" rx="8" fill="#fff" filter="drop-shadow(0 2px 5px rgba(0,0,0,0.10))"/>
+      <g id="card-1-title">
+        <title>书名 + 作者</title>
+        <text x="114" y="196" font-size="20" font-weight="bold" fill="#2c3e50">精神现象学</text>
+        <text x="114" y="226" font-size="14" fill="#666">黑格尔</text>
+      </g>
+      <g id="card-1-read">
+        <title>Read Book 按钮（蓝底 + 文字相邻）</title>
+        <rect x="114" y="270" width="116" height="36" rx="4" fill="#3498db"/>
+        <text x="172" y="294" text-anchor="middle" font-size="14" fill="#fff">Read Book</text>
+      </g>
+      <g id="card-1-notes">
+        <title>笔记按钮（灰底 + 文字相邻）</title>
+        <rect x="238" y="270" width="68" height="36" rx="4" fill="#f1f3f5" stroke="#dee2e6"/>
+        <text x="272" y="294" text-anchor="middle" font-size="14" fill="#495057">笔记</text>
+      </g>
+    </g>
+    <!-- 卡片 2 -->
+    <g id="book-card-2">
+      <title>书卡片 · 资本论</title>
+      <rect x="432" y="150" width="320" height="210" rx="8" fill="#fff" filter="drop-shadow(0 2px 5px rgba(0,0,0,0.10))"/>
+      <g id="card-2-title">
+        <title>书名 + 作者</title>
+        <text x="454" y="196" font-size="20" font-weight="bold" fill="#2c3e50">资本论</text>
+        <text x="454" y="226" font-size="14" fill="#666">卡尔·马克思</text>
+      </g>
+      <g id="card-2-read">
+        <title>Read Book 按钮</title>
+        <rect x="454" y="270" width="116" height="36" rx="4" fill="#3498db"/>
+        <text x="512" y="294" text-anchor="middle" font-size="14" fill="#fff">Read Book</text>
+      </g>
+      <g id="card-2-notes">
+        <title>笔记按钮</title>
+        <rect x="578" y="270" width="68" height="36" rx="4" fill="#f1f3f5" stroke="#dee2e6"/>
+        <text x="612" y="294" text-anchor="middle" font-size="14" fill="#495057">笔记</text>
+      </g>
+    </g>
+    <!-- 卡片 3 -->
+    <g id="book-card-3">
+      <title>书卡片 · 江村经济</title>
+      <rect x="772" y="150" width="320" height="210" rx="8" fill="#fff" filter="drop-shadow(0 2px 5px rgba(0,0,0,0.10))"/>
+      <g id="card-3-title">
+        <title>书名 + 作者</title>
+        <text x="794" y="196" font-size="20" font-weight="bold" fill="#2c3e50">江村经济</text>
+        <text x="794" y="226" font-size="14" fill="#666">费孝通</text>
+      </g>
+      <g id="card-3-read">
+        <title>Read Book 按钮</title>
+        <rect x="794" y="270" width="116" height="36" rx="4" fill="#3498db"/>
+        <text x="852" y="294" text-anchor="middle" font-size="14" fill="#fff">Read Book</text>
+      </g>
+      <g id="card-3-notes">
+        <title>笔记按钮</title>
+        <rect x="918" y="270" width="68" height="36" rx="4" fill="#f1f3f5" stroke="#dee2e6"/>
+        <text x="952" y="294" text-anchor="middle" font-size="14" fill="#495057">笔记</text>
+      </g>
+    </g>
+    <!-- 卡片 4 -->
+    <g id="book-card-4">
+      <title>书卡片 · 富爸爸穷爸爸</title>
+      <rect x="1112" y="150" width="320" height="210" rx="8" fill="#fff" filter="drop-shadow(0 2px 5px rgba(0,0,0,0.10))"/>
+      <g id="card-4-title">
+        <title>书名 + 作者</title>
+        <text x="1134" y="196" font-size="20" font-weight="bold" fill="#2c3e50">富爸爸穷爸爸</text>
+        <text x="1134" y="226" font-size="14" fill="#666">罗伯特·清崎</text>
+      </g>
+      <g id="card-4-read">
+        <title>Read Book 按钮</title>
+        <rect x="1134" y="270" width="116" height="36" rx="4" fill="#3498db"/>
+        <text x="1192" y="294" text-anchor="middle" font-size="14" fill="#fff">Read Book</text>
+      </g>
+      <g id="card-4-notes">
+        <title>笔记按钮</title>
+        <rect x="1258" y="270" width="68" height="36" rx="4" fill="#f1f3f5" stroke="#dee2e6"/>
+        <text x="1292" y="294" text-anchor="middle" font-size="14" fill="#495057">笔记</text>
+      </g>
+    </g>
+    <!-- 卡片 5 -->
+    <g id="book-card-5">
+      <title>书卡片 · 小逻辑</title>
+      <rect x="1452" y="150" width="320" height="210" rx="8" fill="#fff" filter="drop-shadow(0 2px 5px rgba(0,0,0,0.10))"/>
+      <g id="card-5-title">
+        <title>书名 + 作者</title>
+        <text x="1474" y="196" font-size="20" font-weight="bold" fill="#2c3e50">小逻辑</text>
+        <text x="1474" y="226" font-size="14" fill="#666">黑格尔</text>
+      </g>
+      <g id="card-5-read">
+        <title>Read Book 按钮</title>
+        <rect x="1474" y="270" width="116" height="36" rx="4" fill="#3498db"/>
+        <text x="1532" y="294" text-anchor="middle" font-size="14" fill="#fff">Read Book</text>
+      </g>
+      <g id="card-5-notes">
+        <title>笔记按钮</title>
+        <rect x="1598" y="270" width="68" height="36" rx="4" fill="#f1f3f5" stroke="#dee2e6"/>
+        <text x="1632" y="294" text-anchor="middle" font-size="14" fill="#495057">笔记</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ── 注释标注 ── -->
+  <g id="annotation" fill="#adb5bd" font-size="12">
+    <title>底部说明</title>
+    <text x="92" y="1065">素材 01 · 书库页 Library · 1920×1080 16:9 · 左侧浏览器外壳侧边栏（52px，hover 展开 230px）· Read Book → 02 阅读页</text>
+  </g>
+</svg>

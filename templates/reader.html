@@ -12,15 +12,11 @@
         #side-wrap.collapsed #sidebar,
         #side-wrap.collapsed #resizer { display:none; }
 
-        #topbar { display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:10px; padding:0 12px; height:44px; box-sizing:border-box; background:#f8f9fa; border-bottom:1px solid #e9ecef; }
-        #topbar.collapsed { flex-direction:column; align-items:flex-start; justify-content:flex-start; gap:6px; padding:8px 10px; height:auto; border-bottom:none; background:#fff; }
-
         #sidebar { flex-grow:1; min-width:0; background:#f8f9fa; border-right:1px solid #e9ecef; overflow-y:auto; padding:12px 12px 16px; }
 
         /* 侧栏右缘拖拽调宽 */
         #resizer { position:absolute; top:0; right:-3px; width:6px; height:100%; cursor:col-resize; z-index:120; transition:background .15s; }
         #resizer:hover { background:rgba(52,152,219,.25); }
-        .nav-home { display:block; color:#3498db; text-decoration:none; font-family:-apple-system,sans-serif; font-size:.85em; white-space:nowrap; }
         .panel-header { font-family:-apple-system,sans-serif; font-size:.8em; font-weight:bold; color:#868e96; letter-spacing:.5px; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #dee2e6; }
 
         /* ── 章 ── */
@@ -81,19 +77,12 @@
         #ch-loading .spinner { display:inline-block; width:28px; height:28px; border:3px solid #e9ecef; border-top-color:#3498db; border-radius:50%; animation:spin .6s linear infinite; }
         @keyframes spin { to{transform:rotate(360deg)} }
 
-        #sidebar-toggle { width:28px; height:28px; flex-shrink:0; border:1px solid #dee2e6; border-radius:6px; background:#fff; cursor:pointer; font-size:16px; line-height:26px; text-align:center; color:#495057; box-shadow:0 1px 4px rgba(0,0,0,.06); padding:0; }
-        #sidebar-toggle:hover { background:#f1f3f5; }
-
         #ch-nav { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:16px; background:rgba(255,255,255,.95); border:1px solid #dee2e6; border-radius:24px; padding:8px 20px; box-shadow:0 2px 12px rgba(0,0,0,.06); z-index:20; font-family:-apple-system,sans-serif; font-size:.9em; }
         #ch-nav button { border:none; background:none; cursor:pointer; font-size:1.1em; color:#495057; padding:4px 8px; border-radius:4px; }
         #ch-nav button:hover { background:#f1f3f5; color:#3498db; }
         #ch-nav span { color:#868e96; white-space:nowrap; }
 
-        /* ── 概念层：笔触开关 + 选中高亮 + 悬停弹窗 ── */
-        #concept-toggle, #aux-toggle { width:28px; height:28px; flex-shrink:0; border:1px solid #dee2e6; border-radius:6px; background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#495057; box-shadow:0 1px 4px rgba(0,0,0,.06); padding:0; font-size:14px; line-height:1; }
-        #concept-toggle:hover, #aux-toggle:hover { background:#f1f3f5; }
-        #concept-toggle.active, #aux-toggle.active { background:#3498db; border-color:#3498db; color:#fff; }
-        #concept-toggle svg, #aux-toggle svg { width:15px; height:15px; fill:currentColor; }
+        /* ── 概念层：笔触开关（已移至左侧边栏）+ 选中高亮 + 悬停弹窗 ── */
         .ch-content mark.concept-hl { background:#fff3bf; color:inherit; border-radius:2px; padding:0 1px; cursor:pointer; }
         .ch-content mark.concept-hl:hover { background:#ffd43b; }
         /* 语义下划线：开启显示、关闭隐藏（.off）、悬停书签时临时显现 */
@@ -137,15 +126,11 @@
 </head>
 <body>
 
-<script>window.BROWSER_BOOK_ID = {{ book_id | tojson }}; window.BROWSER_BOOK_TITLE = {{ book.metadata.title | tojson }};</script>
+<script>window.BROWSER_BOOK_ID = {{ book_id | tojson }}; window.BROWSER_BOOK_TITLE = {{ book.metadata.title | tojson }}; window.BROWSER_IS_READER = true;</script>
 {% include 'browser_bar.html' %}
 {% include 'markdown_render.js' %}
 
 <div id="side-wrap">
-    <div id="topbar">
-        <a href="/" class="nav-home">&larr; 书库</a>
-        <button id="sidebar-toggle" onclick="toggleSidebar()" title="目录">&#9776;</button>
-    </div>
     <div id="sidebar">
         <div class="panel-header">目 录</div>
         <div id="toc-tree"></div>
@@ -157,12 +142,6 @@
     <div id="chapter-view">
         <div class="ch-title-bar" id="ch-title-bar">
             <span id="ch-title">{{ chapter_title }}</span>
-            <button id="aux-toggle" title="辅助键（全书层 / 章节层）">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z"/></svg>
-            </button>
-            <button id="concept-toggle" title="解释笔：开启后选中文本划词（长句/段 → 语义，短词 → 概念）">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-            </button>
         </div>
         <div class="ch-content" id="ch-content">{{ chapter_content | safe }}</div>
     </div>
@@ -430,7 +409,9 @@ function expandCurrentChapter(idx) {
 function highlightSectionLink(anchor) {
     document.querySelectorAll('.sec-link.active').forEach(function(l) { l.classList.remove('active'); });
     if (!anchor) return null;
-    var link = document.querySelector('.sec-link[data-anchor="' + CSS.escape(anchor) + '"]');
+    // 只查当前章内的节链接：toc_N 等锚点在多章间重名，全局 querySelector 会匹配到其他章的第一个链接
+    var chDiv = tocItems[currentChapter];
+    var link = chDiv ? chDiv.querySelector('.sec-link[data-anchor="' + CSS.escape(anchor) + '"]') : null;
     if (!link) return null;
     for (var cur = link; cur && cur.classList.contains('sec-link'); cur = cur._parentSection) {
         cur.classList.add('active');
@@ -442,9 +423,6 @@ function highlightSectionLink(anchor) {
 // ── 预计算锚点位置，滚动时纯数组查找 ──
 var _highlightSuppress = false;
 var _sectionRanges = [];
-var _autoCollapseArmed = false;  // 仅用户滚动后才启用自动折叠（避免翻章瞬间误折叠）
-var _suppressCollapseOnce = false;  // 点击跳转产生的滚动不触发自动折叠（避免折叠跳转前所在的节）
-var _suppressTimer = null;  // 跳转标志兜底清除定时器
 
 function getBarH() {
     var bar = document.getElementById('ch-title');
@@ -453,21 +431,26 @@ function getBarH() {
 
 function computeRanges() {
     _sectionRanges = [];
-    var links = document.querySelectorAll('.sec-link[data-anchor]');
+    // 只取当前章的节链接：toc_N 等锚点在多章间重名，全局查找会串到其他章
+    var chDiv = tocItems[currentChapter];
+    if (!chDiv) return;
+    var links = chDiv.querySelectorAll('.sec-link[data-anchor]');
     if (links.length === 0) return;
+    var content = document.getElementById('ch-content');
     var mt = mainEl.getBoundingClientRect().top;
     for (var i = 0; i < links.length; i++) {
         var anchor = links[i].getAttribute('data-anchor');
         var el = document.getElementById(anchor);
         if (!el) continue;
+        // 只统计当前章正文内的锚点：已切走的章节被 stash 进隐藏缓存容器，
+        // 若不排除其锚点，旧章区间会污染 _sectionRanges，导致误判 active 而“意外展开”其他章节。
+        if (content && !content.contains(el)) continue;
         _sectionRanges.push({ anchor: anchor, top: el.getBoundingClientRect().top - mt + mainEl.scrollTop });
     }
     _sectionRanges.sort(function(a, b) { return a.top - b.top; });
 }
 
-var _prevAnchor = null;  // 上一次 active 的节锚点（用于检测“离开某部分”）
-
-function updateHighlight(skipCollapse) {
+function updateHighlight() {
     var viewTop = mainEl.scrollTop + getBarH();
     var link = null;
     if (_sectionRanges.length > 0) {
@@ -478,11 +461,9 @@ function updateHighlight(skipCollapse) {
         }
         link = highlightSectionLink(active);
     }
-    // 检测式滚离即收：armed 且非跳转且 active 切换时，折叠“离开的部分”
-    if (_autoCollapseArmed && !skipCollapse) collapseLeaving(link);
-    // 始终展开当前 active 的祖先链（手动收起的除外）
-    expandActiveChain(link);
-    if (link) _prevAnchor = link.getAttribute('data-anchor');
+    // 确定性布局：只展开“当前滚动位置对应的节链 + 上锁的节”，其余一律折叠。
+    // 无论向上/向下滚离、还是点击跳转，目录状态始终只反映当前阅读位置。
+    applySectionLayout(link);
 }
 
 function getSecKids(link) {
@@ -494,56 +475,35 @@ function getSecKids(link) {
     return null;
 }
 
-// ── 检测式“滚离即收” ──
-// 逻辑：仅当 active 从某部分切换到另一部分（进入上/下一部分）时，折叠“离开的部分”；
-// 未滚到的部分（前方）与未离开的部分一律不动。
-function collapseLeaving(activeLink) {
-    if (!activeLink || !_prevAnchor) return;
-    var curAnchor = activeLink.getAttribute('data-anchor');
-    if (curAnchor === _prevAnchor) return;          // active 未变
-    var prevLink = document.querySelector('.sec-link[data-anchor="' + CSS.escape(_prevAnchor) + '"]');
-    if (!prevLink) return;
-    if (prevLink.contains(activeLink)) return;      // 新旧同部分内加深 → 未离开
-    // 找“离开的部分”：公共祖先之下、旧分支的那一层（旧 active 自身或某祖先）
-    var chain = [];
-    for (var p = prevLink; p && p.classList.contains('sec-link'); p = p._parentSection) chain.push(p);
-    var left = prevLink;
-    for (var i = 0; i < chain.length; i++) {
-        if (chain[i].contains(activeLink)) break;   // 公共祖先（新 active 在其内）→ 停止
-        left = chain[i];                            // 尚未被新 active 覆盖 → 属于离开的部分
-    }
-    foldSubtree(left);
-}
-
-function foldSubtree(link) {
-    var kids = getSecKids(link);
-    // 上锁的（或含上锁后代的）不折叠
-    if (!kids || kids.classList.contains('collapsed') || kids._locked || hasLockedDescendant(kids)) return;
-    var tg = kids.previousElementSibling ? kids.previousElementSibling.querySelector('.sec-toggle') : null;
-    toggleCollapse(kids, tg);
-}
-
-// 展开 active 自身 + 祖先链的子节容器 + 所在章框
-function expandActiveChain(activeLink) {
-    var activeCh = activeLink ? activeLink.closest('.ch-item') : tocItems[currentChapter];
-    if (activeCh) {
-        var box = activeCh._sectionBox;
-        if (box && box.classList.contains('collapsed')) toggleCollapse(box, activeCh._toggle);
-    }
+// ── 确定性目录布局：只展开“当前 active 节的祖先链 + 上锁的节”，其余一律折叠 ──
+// 无论向上/向下滚离，还是点击跳转，目录状态始终只反映“当前滚动位置对应的内容部分”；
+// 锁定的节（或含上锁后代的节）不受影响。
+function applySectionLayout(activeLink) {
+    var chapterDiv = activeLink ? activeLink.closest('.ch-item') : tocItems[currentChapter];
+    if (!chapterDiv) return;
+    // 当前章框保持展开
+    var box = chapterDiv._sectionBox;
+    if (box && box.classList.contains('collapsed')) toggleCollapse(box, chapterDiv._toggle);
+    // 收集应保持展开的节容器：active 链上的（active 自身 + 各祖先）
+    var keep = [];
     for (var cur = activeLink; cur && cur.classList.contains('sec-link'); cur = cur._parentSection) {
-        var kids = getSecKids(cur);
-        if (kids && kids.classList.contains('collapsed')) {
-            var tg = kids.previousElementSibling ? kids.previousElementSibling.querySelector('.sec-toggle') : null;
-            toggleCollapse(kids, tg);
-        }
+        var k = getSecKids(cur);
+        if (k && keep.indexOf(k) === -1) keep.push(k);
     }
+    // 遍历当前章所有节容器：链上或上锁的展开，其余折叠
+    chapterDiv.querySelectorAll('.sec-kids').forEach(function(kids) {
+        var onChain = keep.indexOf(kids) !== -1;
+        var locked = kids._locked || hasLockedDescendant(kids);
+        if (onChain || locked) {
+            if (kids.classList.contains('collapsed')) toggleCollapse(kids, kids._toggleEl);
+        } else if (!kids.classList.contains('collapsed')) {
+            toggleCollapse(kids, kids._toggleEl);
+        }
+    });
 }
 
 mainEl.addEventListener('scroll', function() {
-    var jump = _suppressCollapseOnce;  // 点击跳转产生的滚动不启用自动折叠
-    _suppressCollapseOnce = false;
-    if (!jump) _autoCollapseArmed = true;  // 用户真实滚动后才允许自动折叠
-    if (!_highlightSuppress) updateHighlight(jump);
+    if (!_highlightSuppress) updateHighlight();
 }, { passive: true });
 
 // resize debounce
@@ -558,9 +518,6 @@ function scrollToSection(anchor) {
     if (!el) return;
     var mt = mainEl.getBoundingClientRect().top;
     mainEl.style.scrollBehavior = 'auto';
-    _suppressCollapseOnce = true;  // 本次跳转产生的滚动不触发自动折叠
-    clearTimeout(_suppressTimer);
-    _suppressTimer = setTimeout(function() { _suppressCollapseOnce = false; }, 500);  // 兜底：无实际滚动时清除标志
     mainEl.scrollTop = Math.max(0, el.getBoundingClientRect().top - mt + mainEl.scrollTop - getBarH());
     requestAnimationFrame(function() { mainEl.style.scrollBehavior = 'smooth'; });
 }
@@ -645,8 +602,6 @@ function unstashChapter(idx, scrollTo, anchor) {
         AuxLayer.restoreFromDom();   // 从放回的 mark 重建书签/弹窗（滚动已就位，位置锚定 mark）
     }
     requestAnimationFrame(function() {
-        _autoCollapseArmed = false;   // 切回瞬间不自动折叠
-        _prevAnchor = null;  // 切回重置“上一次 active”
         computeRanges();
         updateHighlight();
         mainEl.style.scrollBehavior = 'smooth';
@@ -684,8 +639,6 @@ async function loadChapter(idx, scrollTo, anchor) {
         AuxLayer.prepareNewChapter();   // 新章：重置防重集合/书签序号
         // 等浏览器完成布局后再计算锚点位置
         requestAnimationFrame(function() {
-            _autoCollapseArmed = false;  // 加载瞬间不自动折叠
-            _prevAnchor = null;  // 新章节重置“上一次 active”
             computeRanges();
             updateHighlight();
         });
@@ -729,7 +682,6 @@ function setSidebarWidth(w, animate) {
 
 function toggleSidebar() {
     var collapsed = sideWrap.classList.toggle('collapsed');
-    document.getElementById('topbar').classList.toggle('collapsed', collapsed);
     if (collapsed) {
         // 清除内联宽度，让 .collapsed 规则生效（收成 76px 竖条）
         sideWrap.style.width = '';
@@ -742,7 +694,7 @@ function toggleSidebar() {
     requestAnimationFrame(computeRanges);
 }
 
-// 拖拽右缘实时调宽（☰ 图标随栏宽实时跟随）
+// 拖拽右缘实时调宽
 (function initSidebarResize() {
     var rs = document.getElementById('resizer');
     var dragging = false, startX = 0, startW = 0;
@@ -774,7 +726,6 @@ function toggleSidebar() {
     var savedW = parseInt(localStorage.getItem(SIDEBAR_KEY_W) || '280', 10);
     if (localStorage.getItem(SIDEBAR_KEY_C) === '1') {
         sideWrap.classList.add('collapsed');
-        document.getElementById('topbar').classList.add('collapsed');
         // 折叠时不能设内联宽度（会覆盖 .collapsed 的 76px）
         sideWrap.style.width = '';
     } else if (!isNaN(savedW) && savedW >= SIDEBAR_MIN) {
@@ -785,7 +736,6 @@ function toggleSidebar() {
 expandCurrentChapter(currentChapter);
 updateNavLabel();
 requestAnimationFrame(function() {
-    _autoCollapseArmed = false;  // 首次加载不自动折叠
     computeRanges();
     updateHighlight();
     // 从辅助阅读返回（?rt=1）：恢复到进入时的章节滚动位置
@@ -860,11 +810,7 @@ function saveReaderReturnPos() {
             JSON.stringify({ idx: currentChapter, scrollTop: mainEl.scrollTop }));
     } catch (e) {}
 }
-
-document.getElementById('aux-toggle').addEventListener('click', function() {
-    saveReaderReturnPos();
-    location.href = '/notes/' + BOOK_ID;
-});
+// 辅助键入口已移至左侧边栏（browser-bar 的 #bb-aux），此处不再单独绑定。
 
 // ═══════════════════════════════════════════════════════
 // 辅助阅读版块（概念层 + 语义层）—— 独立 IIFE 模块 AuxLayer
@@ -888,8 +834,9 @@ var AuxLayer = (function() {
     var _restoredSources = {};       // 已恢复 source 集合（防并发/重复包裹）
 
     // ── 解释笔开关：只控制“划词”（选中文本 → 生成语义/概念标记）。
-    // 弹窗显示是独立逻辑（mark 存在即 hover/点击可看），不受本开关影响。──
-    document.getElementById('concept-toggle').addEventListener('click', function() {
+    // 弹窗显示是独立逻辑（mark 存在即 hover/点击可看），不受本开关影响。
+    // 按钮已移至左侧边栏（browser-bar 的 #bb-concept，active 样式由 .bb-item.active 提供）。──
+    document.getElementById('bb-concept').addEventListener('click', function() {
         CONCEPT_ON = !CONCEPT_ON;
         this.classList.toggle('active', CONCEPT_ON);
     });
