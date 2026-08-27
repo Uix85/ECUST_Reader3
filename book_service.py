@@ -22,66 +22,93 @@ from reader3 import _filter_placeholder_images
 from schema import get_db
 
 
+# ── 共享正则片段（检测/层级/评分共用，避免多处不一致）──
+_CN_NUM = r'[一二三四五六七八九十百千〇零\d]+'            # 中文数字+阿拉伯（含百千零）
+_CN_NUM_PURE = r'[一二三四五六七八九十百千〇零]+'          # 纯中文数字
+_ROMAN = r'[IVXLCDM]{1,4}'                                # 罗马数字
+_UNI_ROMAN = r'[\u2160-\u2169]+'                          # Unicode 罗马数字（Ⅰ．等）
+_CN_CHAP_TAIL = r'[章节篇回部集卷节讲课]'                  # 章级称谓（含"节/讲/课"）
+_CN_PREFIX_ORDER = r'(?:[序前引导绪]言|(?:总|代|自|再版|原|编者)\s*序)'  # 序言类
+
+# 标题评分阈值（统一命名，避免魔法数字分散）
+_SCORE_MIN_DETECT = 30          # 文本检测加入（Method A/C/D 等）
+_SCORE_MIN_START = 20           # Method B：章首标题
+_SCORE_MIN_CLEAN = 20           # 目录清洗保留
+_SCORE_MIN_ATTACH = 25          # 子标题挂载
+_SCORE_HIGH_CONFIDENCE = 60     # 高置信度（无 TOC 时的兜底树）
+
 _HEADING_PATTERNS = [
     # Chinese chapter/section markers
-    re.compile(r'^第[一二三四五六七八九十百千〇零\d]+[章节篇回部集卷][：:　\s]?'),
-    re.compile(r'^[序前引导绪]言[：:　]?'),
+    re.compile(rf'^第{_CN_NUM}{_CN_CHAP_TAIL}[：:　\s]?'),
+    re.compile(rf'^{_CN_PREFIX_ORDER}[：:　]?'),
     re.compile(r'^[跋后]记[：:　]?'),
     re.compile(r'^附录[：:　]?'),
     re.compile(r'^译者序[：:　]?'),
     re.compile(r'^出版说明[：:　]?'),
     re.compile(r'^内容提要[：:　]?'),
     # Parenthetical Chinese markers: （一）, 一、, 1. 等
-    re.compile(r'^[（(][一二三四五六七八九十\d][）)]'),
-    re.compile(r'^[一二三四五六七八九十\d]+[、．.]'),
-    # Parenthetical letters: (a), (b), (c), （a）（b）（c）
+    re.compile(rf'^[（(]{_CN_NUM}[）)]'),
+    re.compile(rf'^{_CN_NUM}[、．.]'),
+    # Parenthetical letters: (a), (b), (c), （a）（b）（c）, a）, a)
     re.compile(r'^[（(][a-zA-Z][）)]'),
+    re.compile(r'^[a-zA-Z][）)]\s*\S'),
     # English chapter/section markers
     re.compile(r'^(Chapter|Part|Section|§)\s*[\dIVXLCDM]+[\.\s]?', re.IGNORECASE),
     re.compile(r'^(Preface|Introduction|Appendix|Foreword|Afterword)[\s:]', re.IGNORECASE),
     # Roman numeral headings: I., II., III., IV., IX. etc.
-    re.compile(r'^[IVXLCDM]{1,4}\.\s+\S'),
+    # 要求后接大写字母/数字/汉字，排除 "I. e." "A. …" 这类正文缩写误报
+    re.compile(rf'^{_ROMAN}\.\s+(?=[A-Z0-9\u4e00-\u9fff])'),
     # Letter headings: A., B., C., a., b., c.
     re.compile(r'^[A-Za-z]\.\s+\S'),
     # Unicode Roman numerals: Ⅰ．, Ⅱ．, Ⅲ．, Ⅳ．etc.
-    re.compile(r'^[\u2160-\u2169]+[．\.]'),
+    re.compile(rf'^{_UNI_ROMAN}[．\.]'),
     # Square-bracket headings: [一、...], [1．...], [三、哲学的认识], [Ⅰ．...] etc.
-    re.compile(r'^\[[一二三四五六七八九十\d\u2160-\u2169]+[、．\.]\s*\S'),
-    # Book metadata in square brackets (精神现象学 风格)
+    re.compile(rf'^\[(?:{_CN_NUM}|{_UNI_ROMAN})[、．\.]\s*\S'),
+    # Book metadata in square brackets (精神现象学 风格) —— 注意：必须是最后一个模式
     re.compile(r'^【.*?】'),
 ]
 
 
-def _determine_level(text: str) -> int:
-    """【层级判定】根据标题文本模式判断层级（1=章,2=节,5=数字子节等）"""
+def _match_level(text: str) -> int:
+    """【层级匹配】按标题文本模式返回层级（1=章,2=节,3=子节,4=罗马级,5=数字级,6=数字括号枚举；0=非标题模式）"""
     # Strip enclosing brackets before pattern matching
     detect = re.sub(r'^\[([^\]]+)\]$', r'\1', text.strip())
 
-    if re.match(r'^第[一二三四五六七八九十百千〇零\d]+[章节篇回部集卷]', detect):
+    if re.match(rf'^第{_CN_NUM}{_CN_CHAP_TAIL}', detect):
         return 1
-    if re.match(r'^(Section|Chapter|Part)', detect, re.IGNORECASE):
+    if re.match(r'(^(Section|Chapter|Part)\b|^§)', detect, re.IGNORECASE):
         return 1
-    if re.match(r'^[（(][一二三四五六七八九十\d][）)]', detect):
+    if re.match(rf'^{_CN_PREFIX_ORDER}', detect):
+        return 1
+    # 数字括号 (1)(2) 常见为正文枚举 → 最低级（先于汉字括号判定，修复原死代码）
+    if re.match(r'^[（(]\d+[）)]', detect):
+        return 6
+    if re.match(rf'^[（(]{_CN_NUM_PURE}[）)]', detect):
         return 2
-    if re.match(r'^[一二三四五六七八九十]+[、．.]', detect):
+    if re.match(rf'^{_CN_NUM_PURE}[、．.]', detect):
         return 2
     if re.match(r'^[A-Z]\.\s', detect):
         return 2
     if re.match(r'^[（(][a-zA-Z][）)]', detect):
         return 3
+    if re.match(r'^[a-zA-Z][）)]\s*\S', detect):
+        return 3
     if re.match(r'^[a-z]\.\s', detect):
         return 3
     if re.match(r'^【', detect):
         return 4
-    if re.match(r'^[IVXLCDM]{1,4}\.\s', detect):
+    if re.match(rf'^{_ROMAN}\.\s', detect):
         return 4
-    if re.match(r'^[\u2160-\u2169]+[．\.]', detect):
+    if re.match(rf'^{_UNI_ROMAN}[．\.]', detect):
         return 4
-    if re.match(r'^\d+[．\.、]', detect):
+    if re.match(r'^\d+[．\.、](?!\d)', detect):
         return 5
-    if re.match(r'^[（(][\d][）)]', detect):
-        return 6
-    return 2
+    return 0
+
+
+def _determine_level(text: str) -> int:
+    """【层级判定】根据标题文本模式判断层级（1=章,2=节,5=数字子节等）；无模式时兜底 2"""
+    return _match_level(text) or 2
 
 
 def _score_heading_candidate(text: str) -> int:
@@ -90,7 +117,7 @@ def _score_heading_candidate(text: str) -> int:
         return 0
 
     # Reject outright: Chinese headings never contain sentence terminators
-    if '。' in text or text.rstrip()[-1] in '！？':
+    if '。' in text or text.rstrip()[-1] in '！？!?':
         return 0
 
     score = 0
@@ -98,25 +125,21 @@ def _score_heading_candidate(text: str) -> int:
     # Check against known heading patterns
     for i, pat in enumerate(_HEADING_PATTERNS):
         if pat.match(text):
-            # Metadata patterns (【...】) get lower score
+            # Metadata patterns (【...】) get low fixed score: 元数据标记不是标题候选，
+            # 直接返回（不叠加短文本/无句号加分，避免版权页元数据污染目录）
             if i == len(_HEADING_PATTERNS) - 1:  # last pattern = metadata
-                score = max(score, 10)
-            else:
-                score = max(score, 80)
+                return 10
+            score = max(score, 80)
 
-    # Bonus for being short
+    # Bonus for being short（原重复加分合并）
     if len(text) <= 30:
-        score += 10
+        score += 15
     elif len(text) <= 50:
         score += 5
 
     # Bonus: does NOT end with period
     if not text.endswith('.') :
         score += 10
-
-    # Bonus: only contains Chinese/English/numbers/punctuation, no long content
-    if len(text) <= 30:
-        score += 5
 
     # Penalty: contains obvious body-text markers
     if '的' in text and len(text) > 30:
@@ -127,15 +150,20 @@ def _score_heading_candidate(text: str) -> int:
         return 0
 
     # Reject glued headings: chapter-title + sub-heading stuck together
-    # e.g., "第二章：调查区域江村经济1．调查区域的界定"
+    # e.g., "第二章：调查区域江村经济1．调查区域的界定" / "第二章：调查区域一、自然条件"
     # The chapter-pattern part and sub-heading part are both detected separately
-    if re.match(r'^第[一二三四五六七八九十百千〇零\d]+[章节篇回部集卷]', text):
-        if re.search(r'\d+[．\.、]', text[len(text)//2:]):
+    if re.match(rf'^第{_CN_NUM}{_CN_CHAP_TAIL}', text):
+        tail = text[len(text) // 2:]
+        if re.search(r'\d+[．\.、]', tail) or re.search(r'[一二三四五六七八九十百千]+[、．.]', tail):
             return 0
 
     # Downgrade digit-based parentheticals like (1), (2) vs legitimate （一）, （二）
     # These are often body-text enumerations, not real headings
-    if re.match(r'^[(（]\d+[)）]', text) and not re.match(r'^[（(][一二三四五六七八九十]+[）)]', text):
+    if re.match(r'^[(（]\d+[)）]', text) and not re.match(rf'^[（(]{_CN_NUM_PURE}[）)]', text):
+        score = min(score, 25)
+
+    # Downgrade abbreviation-style enumerations: "I. e.", "A. B. C." etc.
+    if re.match(r'^[A-Za-z]\.\s+[A-Za-z]\.', text):
         score = min(score, 25)
 
     return score
@@ -168,7 +196,7 @@ def _detect_headings_from_text(soup, chapter_href: str, book_title: str = '') ->
     seen_texts = set()
     for idx, text in enumerate(br_segments):
         score = _score_heading_candidate(text)
-        if score >= 30 and text not in seen_texts:
+        if score >= _SCORE_MIN_DETECT and text not in seen_texts:
             seen_texts.add(text)
             # Determine level based on patterns
             level = _determine_level(text)
@@ -186,7 +214,7 @@ def _detect_headings_from_text(soup, chapter_href: str, book_title: str = '') ->
                 # Only add if it actually got truncated (meaning it had body text)
                 if cleaned != line or len(line) <= 30:
                     score = _score_heading_candidate(cleaned)
-                    if score >= 20:
+                    if score >= _SCORE_MIN_START:
                         seen_texts.add(cleaned)
                         _add(1, cleaned, f"txt-hdr-start-{hkey}", score)
             break
@@ -205,40 +233,19 @@ def _detect_headings_from_text(soup, chapter_href: str, book_title: str = '') ->
             continue
         if line in seen_texts:
             continue
-        # Match various sub-heading patterns within continuous text
-        is_sub = False
-        sub_lvl = 2
-        if re.match(r'^[一二三四五六七八九十]+[、．.]', line):
-            is_sub = True
-            sub_lvl = 2
-        elif re.match(r'^\d+[．\.、](?!\d)', line):
-            is_sub = True
-            sub_lvl = 5
-        elif re.match(r'^[（(][a-zA-Z][）)]', line):
-            is_sub = True
-            sub_lvl = 3
-        elif re.match(r'^[（(][一二三四五六七八九十\d][）)]', line):
-            is_sub = True
-            sub_lvl = 2
-        elif re.match(r'^[IVXLCDM]{1,4}\.', line):
-            is_sub = True
-            sub_lvl = 4
-        elif re.match(r'^[\u2160-\u2169]+[．\.]', line):
-            is_sub = True
-            sub_lvl = 4
-        elif re.match(r'^[A-Z]\.\s', line):
-            is_sub = True
-            sub_lvl = 2
-        elif re.match(r'^[a-z]\.\s', line):
-            is_sub = True
-            sub_lvl = 3
-
-        if is_sub:
+        # 用统一层级匹配判断子标题（内部剥外层方括号，覆盖 [一、xxx] [1．xxx] 与
+        # 英文 Chapter/Section/Part 等无 <br> 的 EPUB 格式）
+        sub_lvl = _match_level(line)
+        if sub_lvl > 0:
+            # 连续文本中的"第一章"等中文章级标题由 Method A/B 与原始 TOC 覆盖，
+            # 这里仅收集英文 Chapter/Section 等章级（无 <br> 英文书的结构信号）
+            if sub_lvl == 1 and not re.match(r'^(Chapter|Part|Section|§)', line.strip(), re.IGNORECASE):
+                continue
             # Must end without body-terminating punctuation (period only, not ；)
-            if line.rstrip()[-1] in '。！？':
+            if line.rstrip()[-1] in '。！？!?':
                 continue
             score = _score_heading_candidate(line)
-            if score >= 30:
+            if score >= _SCORE_MIN_DETECT:
                 seen_texts.add(line)
                 _add(sub_lvl, line, f"txt-hdr-full-{hkey}-{idx}", score)
 
@@ -265,7 +272,7 @@ def _detect_headings_from_text(soup, chapter_href: str, book_title: str = '') ->
                 if full_title in seen_texts:
                     continue
                 score = _score_heading_candidate(full_title)
-                if score >= 30:
+                if score >= _SCORE_MIN_DETECT:
                     seen_texts.add(full_title)
                     # Reproducible anchor from title text (not position-based)
                     _add(5, full_title, 'hdr-inline-' + re.sub(r'[^a-zA-Z0-9\u4e00-\u9fff]', '', full_title)[:30], score)
@@ -298,7 +305,7 @@ def _clean_title(title: str, max_len: int = 100) -> str:
         idx = title.rfind(sep)
         if idx > len(title) // 2 and idx > 3:
             before = title[:idx].strip()
-            if len(before) >= 4 and _score_heading_candidate(before) >= 30:
+            if len(before) >= 4 and _score_heading_candidate(before) >= _SCORE_MIN_DETECT:
                 title = before
                 break
 
@@ -337,7 +344,7 @@ def _clean_toc_entries(entries: list, depth: int = 0, filter_depth0: bool = True
         # - Very long strings that aren't proper titles
         # - Strings that are just filenames
         if depth == 0 and filter_depth0:
-            if _score_heading_candidate(new_title) < 20:
+            if _score_heading_candidate(new_title) < _SCORE_MIN_CLEAN:
                 # Check if it has children to keep
                 if entry.children:
                     new_children = _clean_toc_entries(entry.children, depth + 1, filter_depth0)
@@ -369,12 +376,13 @@ def inject_heading_ids(chapter: ChapterContent, book_title: str = '') -> str:
     # Method 2: If no heading tags, inject anchors for text-detected headings
     if not heading_tags:
         html_str = str(soup)
-        br_tag = '<br/>'
-        parts = html_str.split(br_tag)
+        # 与 _detect_headings_from_text Method A 完全一致的规范化切分，保证锚点索引对准
+        html_str = html_str.replace('<br/>', '<br>')
+        parts = html_str.split('<br>')
         new_parts = []
         for p_idx, part in enumerate(parts):
             part_text = BeautifulSoup(part, 'html.parser').get_text(strip=True)
-            if part_text and _score_heading_candidate(part_text) >= 30:
+            if part_text and _score_heading_candidate(part_text) >= _SCORE_MIN_DETECT:
                 # Deterministic anchor from chapter href
                 hkey = re.sub(r'[^a-zA-Z0-9]', '', chapter.href)[-8:]
                 anchor_id = f"txt-hdr-{hkey}-{p_idx}"
@@ -384,7 +392,7 @@ def inject_heading_ids(chapter: ChapterContent, book_title: str = '') -> str:
                     modified = True
             new_parts.append(part)
         if modified:
-            html_str = br_tag.join(new_parts)
+            html_str = '<br>'.join(new_parts)
 
         # Method 3: Inject anchors for inline sub-headings
         # (e.g., "江村经济<br><br>1．调查区域的界定" — detected by Method D)
@@ -438,19 +446,19 @@ def _attach_sub_headings(toc_entries: List[TOCEntry], book: Book) -> List[TOCEnt
         # Strip parent title prefix
         if parent_title and t.startswith(parent_title):
             remainder = t[len(parent_title):].strip()
-            if remainder and _score_heading_candidate(remainder) >= 30:
+            if remainder and _score_heading_candidate(remainder) >= _SCORE_MIN_DETECT:
                 t = remainder
         # Find sub-heading pattern in remaining text
         m = re.search(r'([一二三四五六七八九十]+[．\.、][^。\n]{2,40})$', t)
         if m:
             cand = m.group(1).strip()
-            if _score_heading_candidate(cand) >= 30:
+            if _score_heading_candidate(cand) >= _SCORE_MIN_DETECT:
                 t = cand
         # Also try digit pattern
         m2 = re.search(r'(\d+[．\.、][^。\n]{2,40})$', t)
         if m2 and not m:
             cand = m2.group(1).strip()
-            if _score_heading_candidate(cand) >= 30:
+            if _score_heading_candidate(cand) >= _SCORE_MIN_DETECT:
                 t = cand
         return t
 
@@ -463,18 +471,33 @@ def _attach_sub_headings(toc_entries: List[TOCEntry], book: Book) -> List[TOCEnt
         """【层级重算】从清洗后的标题重新计算层级"""
         return _determine_level(title)
 
+    # 确定每个 spine 文件的可挂载父条目（按 spine 顺序遍历）：
+    # 不在 toc_by_file 中的文件（其 TOC 条目被 _clean_toc_entries 过滤，
+    # 如 TXT 转换书的正文续篇，标题是正文首句而非真实标题）不能直接丢弃——
+    # 挂到前一个相邻章条目下，避免其中检测出的子标题丢失（精神现象学序言三、四部分）。
+    file_to_parent: Dict[str, TOCEntry] = {}
+    last_parent: Optional[TOCEntry] = None
     for ch in book.spine:
-        if ch.href not in toc_by_file:
+        if ch.href in toc_by_file:
+            last_parent = toc_by_file[ch.href][-1]
+            file_to_parent[ch.href] = last_parent
+        elif last_parent is not None:
+            file_to_parent[ch.href] = last_parent
+
+    # 按父章收集清洗后的标题（spine 顺序 = 文档顺序；同父章的多文件子标题合并后统一建树）
+    heads_by_parent: Dict[int, list] = {}
+    seq = 0  # 全局序号：跨文件合成时保证文档顺序（_orig_idx 每文件内从 0 开始）
+    for ch in book.spine:
+        parent = file_to_parent.get(ch.href)
+        if parent is None:
             continue
 
         soup = BeautifulSoup(ch.content, 'html.parser')
         detected = _detect_headings_from_text(soup, ch.href, book.metadata.title)
-        good = [h for h in detected if h['score'] >= 25]
+        good = [h for h in detected if h['score'] >= _SCORE_MIN_ATTACH]
 
         if not good:
             continue
-
-        parent = toc_by_file[ch.href][-1]
 
         # Clean and deduplicate titles
         seen_clean = set()
@@ -494,11 +517,12 @@ def _attach_sub_headings(toc_entries: List[TOCEntry], book: Book) -> List[TOCEnt
             seen_clean.add(t)
             # Recompute level from cleaned title (fixes glued heading bug)
             new_level = _recompute_level(t)
+            seq += 1
             cleaned_heads.append({
                 'level': new_level,
                 'title': t,
                 'anchor': h['anchor'],
-                '_orig_idx': h.get('_orig_idx', 0),
+                '_orig_idx': seq,
                 'chapter_order': 0,
                 'chapter_href': ch.href,
             })
@@ -506,9 +530,23 @@ def _attach_sub_headings(toc_entries: List[TOCEntry], book: Book) -> List[TOCEnt
         if not cleaned_heads:
             continue
 
+        heads_by_parent.setdefault(id(parent), []).extend(cleaned_heads)
+
+    # 统一构建子标题树并挂载（顺序：按 spine 内检测到的文档顺序；同一父章多文件合并，互不覆盖）
+    for parent_key, cleaned_heads in heads_by_parent.items():
+        # Find parent entry by identity
+        parent = None
+        for entries in toc_by_file.values():
+            for e in entries:
+                if id(e) == parent_key:
+                    parent = e
+                    break
+            if parent is not None:
+                break
+        if parent is None:
+            continue
         # Sort by original position (not score) for correct tree building
         cleaned_heads.sort(key=lambda h: h.get('_orig_idx', 0))
-
         # Build hierarchy among sub-headings and attach
         sub_tree = _headings_to_tree(cleaned_heads, use_levels=True)
         parent.children = sub_tree
@@ -575,7 +613,7 @@ def build_heading_based_toc(book: Book) -> List[TOCEntry]:
         soup = BeautifulSoup(ch.content, 'html.parser')
         detected = _detect_headings_from_text(soup, ch.href)
         for h in detected:
-            if h['score'] >= 60:
+            if h['score'] >= _SCORE_HIGH_CONFIDENCE:
                 h['chapter_order'] = ch.order
                 h['title'] = _clean_title(h['title'])
                 text_headings.append(h)
