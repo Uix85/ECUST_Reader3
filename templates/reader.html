@@ -7,17 +7,45 @@
     <style>
         body { margin:0; padding:0; display:flex; height:100vh; overflow:hidden; font-family:Georgia,serif; background:#fff; }
 
+        /* ── 展示栏（VSCode 侧边栏模式）：项目（目录 / 全书层…）上下排列，点击标题折叠，分隔条拖拽分高度 ── */
         #side-wrap { position:relative; display:flex; flex-direction:column; flex-shrink:0; width:280px; min-width:0; transition:width .25s; margin-left:52px; }
-        #side-wrap.collapsed { width:76px; }
-        #side-wrap.collapsed #sidebar,
-        #side-wrap.collapsed #resizer { display:none; }
+        #side-wrap.hidden { display:none; }
 
-        #sidebar { flex-grow:1; min-width:0; background:#f8f9fa; border-right:1px solid #e9ecef; overflow-y:auto; padding:12px 12px 16px; }
+        #panel { flex-grow:1; min-height:0; display:flex; flex-direction:column; background:#f8f9fa; border-right:1px solid #e9ecef; }
+        /* VSCode 布局：展开项平分剩余空间（仅目录展开时=一展到底），折叠项只留标题行、按文档流聚于顶部 */
+        .pv { display:flex; flex-direction:column; min-height:0; overflow:hidden; }
+        .pv.open { flex:1 1 0; }
+        #panel .pv.collapsed { flex:none; }
+        .pv-header { flex-shrink:0; display:flex; align-items:center; gap:6px; height:30px; padding:0 10px; cursor:pointer; user-select:none; font-family:-apple-system,sans-serif; font-size:.82em; font-weight:bold; color:#495057; letter-spacing:.5px; background:#f1f3f5; border-bottom:1px solid #dee2e6; }
+        .pv-header:hover { color:#1a5276; background:#e7f1fa; }
+        .pv-chevron { width:16px; height:16px; flex-shrink:0; color:#868e96; transition:transform .15s ease; }
+        .pv-header:hover .pv-chevron { color:#1a5276; }
+        .pv.open > .pv-header .pv-chevron { transform:rotate(90deg); }
+        .pv-body { flex:1 1 0; min-height:0; overflow-y:auto; padding:12px 12px 16px; }
+        .pv.collapsed .pv-body { display:none; }
 
-        /* 侧栏右缘拖拽调宽 */
+        /* 项目间上下分隔条（VSCode「底部上拉」）：默认全透明不可见，悬停才显示；仅目录展开时存在 */
+        #pv-splitter { flex-shrink:0; height:5px; cursor:row-resize; }
+        #pv-splitter:hover { background:rgba(52,152,219,.25); }
+
+        /* 展示栏右缘拖拽调宽 */
         #resizer { position:absolute; top:0; right:-3px; width:6px; height:100%; cursor:col-resize; z-index:120; transition:background .15s; }
         #resizer:hover { background:rgba(52,152,219,.25); }
-        .panel-header { font-family:-apple-system,sans-serif; font-size:.8em; font-weight:bold; color:#868e96; letter-spacing:.5px; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #dee2e6; }
+
+        /* ── 全书层 Markdown（展示栏内渲染）── */
+        .pv-md { line-height:1.6; font-size:.88em; color:#212529; word-break:break-word; }
+        .pv-md p { margin:.4em 0; }
+        .pv-md h1,.pv-md h2,.pv-md h3,.pv-md h4,.pv-md h5,.pv-md h6 { font-family:-apple-system,sans-serif; margin:.8em 0 .3em; color:#1a1a2e; }
+        .pv-md h1 { font-size:1.15em; } .pv-md h2 { font-size:1.08em; } .pv-md h3,.pv-md h4 { font-size:1em; }
+        .pv-md ul,.pv-md ol { margin:.3em 0; padding-left:1.4em; }
+        .pv-md li { margin:.15em 0; }
+        .pv-md code { background:#eef3f7; border-radius:3px; padding:0 3px; font-size:.92em; }
+        .pv-md pre { background:#eef3f7; border-radius:6px; padding:8px 10px; overflow-x:auto; margin:.4em 0; }
+        .pv-md pre code { background:none; padding:0; }
+        .pv-md a { color:#2d6cdf; }
+        .pv-md hr { border:none; border-top:1px solid #dee2e6; margin:.6em 0; }
+        .pv-md blockquote { margin:.4em 0; padding:2px 10px; border-left:3px solid #a5d8ff; color:#495057; }
+        .pv-empty { color:#adb5bd; font-size:.9em; }
 
         /* ── 章 ── */
         .ch-item { margin-bottom:6px; }
@@ -32,8 +60,9 @@
         .ch-toggle.open i { background:#3498db; }
 
         /* ── 节框 ── */
-        .section-box { border:1px solid #e9ecef; border-radius:6px; background:#fbfcfd; padding:4px 6px; margin:4px 0 8px 0; overflow:hidden; transition:max-height .2s,opacity .15s,padding .2s,margin .2s; }
-        .section-box.collapsed { max-height:0!important; opacity:0; padding-top:0; padding-bottom:0; margin-top:0; margin-bottom:0; border-width:0; }
+        .section-box { border:1px solid #e9ecef; border-radius:6px; background:#fbfcfd; padding:4px 6px; margin:4px 0 8px 0; overflow:hidden; transition:max-height .2s,opacity .15s,padding .2s,margin .2s,visibility 0s linear 0s; visibility:visible; }
+        /* visibility 延迟到折叠动画结束再隐藏：防止折叠盒内的节链接残留命中区/键盘焦点（Tab+Enter 会误跳其它章） */
+        .section-box.collapsed { max-height:0!important; opacity:0; padding-top:0; padding-bottom:0; margin-top:0; margin-bottom:0; border-width:0; visibility:hidden; transition:max-height .2s,opacity .15s,padding .2s,margin .2s,visibility 0s linear .2s; }
         .sec-link { display:block; flex:1; min-width:0; text-decoration:none; color:#4a5568; font-size:.85em; padding:4px 8px; border-radius:3px; line-height:1.35; font-family:-apple-system,sans-serif; cursor:pointer; }
         .sec-link:hover { background:rgba(0,0,0,.03); color:#2d3748; }
         .sec-link.active { color:#1a202c; font-weight:600; background:rgba(0,0,0,.045); }
@@ -47,13 +76,8 @@
         .sec-toggle { width:20px; height:28px; flex-shrink:0; cursor:pointer; user-select:none; opacity:.35; transition:opacity .15s,transform .15s; font-size:18px; display:flex; align-items:center; justify-content:center; margin-right:2px; }
         .sec-toggle:hover { opacity:.7; }
         .sec-toggle.open { transform:rotate(90deg); }
-        .sec-kids { overflow:hidden; transition:max-height .2s,opacity .15s; }
-        .sec-kids.collapsed { max-height:0!important; opacity:0; }
-        /* 章/节统一：右侧上锁图标（灰色图钉，Edge 风格） */
-        .lock-icon { margin-left:auto; cursor:pointer; display:flex; align-items:center; justify-content:center; width:18px; height:18px; opacity:.3; user-select:none; flex-shrink:0; color:#6c757d; }
-        .lock-icon svg { width:13px; height:13px; fill:currentColor; }
-        .lock-icon:hover { opacity:.85; }
-        .lock-icon.locked { opacity:1; }
+        .sec-kids { overflow:hidden; transition:max-height .2s,opacity .15s,visibility 0s linear 0s; visibility:visible; }
+        .sec-kids.collapsed { max-height:0!important; opacity:0; visibility:hidden; transition:max-height .2s,opacity .15s,visibility 0s linear .2s; }
         /* 层级缩进：一级节标题与章标题对齐，每深一层缩进一个字符 */
         .sec-row.d1 { padding-left:8px; }
         .sec-row.d2 { padding-left:20px; }
@@ -109,7 +133,7 @@
         .semantic-pop .sp-move { position:absolute; top:7px; right:4px; width:20px; height:20px; color:#6c757d; opacity:.5; z-index:2; display:flex; align-items:center; justify-content:center; }
         .semantic-pop .sp-move:hover { opacity:1; }
         .semantic-pop .sp-move svg { width:15px; height:15px; fill:currentColor; }
-        .semantic-pop .sp-body { flex:1; overflow-y:auto; padding:10px 12px; line-height:1.6; color:#2b4a63; word-break:break-word; }
+        .semantic-pop .sp-body { flex:1; overflow-y:auto; padding:10px 12px; line-height:1.6; color:#2b4a63; word-break:break-word; overscroll-behavior:contain; }
         .semantic-pop .sp-body p { margin:.35em 0; }
         .semantic-pop .sp-body h1, .semantic-pop .sp-body h2, .semantic-pop .sp-body h3,
         .semantic-pop .sp-body h4, .semantic-pop .sp-body h5, .semantic-pop .sp-body h6 { margin:.6em 0 .3em; font-size:1.05em; color:#1a1a2e; }
@@ -129,13 +153,23 @@
 <script>window.BROWSER_BOOK_ID = {{ book_id | tojson }}; window.BROWSER_BOOK_TITLE = {{ book.metadata.title | tojson }}; window.BROWSER_IS_READER = true;</script>
 {% include 'browser_bar.html' %}
 {% include 'markdown_render.js' %}
+{% include 'scrollbar.html' %}
 
 <div id="side-wrap">
-    <div id="sidebar">
-        <div class="panel-header">目 录</div>
-        <div id="toc-tree"></div>
+    <div id="panel">
+        <!-- 项目：目录（顶部，默认展开 = 一展到底） -->
+        <section class="pv open" id="pv-toc">
+            <div class="pv-header" title="点击折叠 / 展开"><svg class="pv-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="pv-title">目 录</span></div>
+            <div class="pv-body"><div id="toc-tree"></div></div>
+        </section>
+        <div id="pv-splitter" title="拖动调整目录高度（拖到顶部自动折叠）"></div>
+        <!-- 项目：全书层（默认折叠） -->
+        <section class="pv collapsed" id="pv-book">
+            <div class="pv-header" title="点击折叠 / 展开"><svg class="pv-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="pv-title">全书层</span></div>
+            <div class="pv-body"><div class="pv-md" id="pv-book-content"><span class="pv-empty">加载中…</span></div></div>
+        </section>
     </div>
-    <div id="resizer" title="拖动调整目录宽度"></div>
+    <div id="resizer" title="拖动调整栏宽"></div>
 </div>
 
 <div id="main">
@@ -186,9 +220,14 @@ function buildChapter(ch, idx) {
 
     var hasKids = ch.children && ch.children.length > 0;
 
-    // 节框先建（折叠/上锁统一引用）
-    var box = document.createElement('div');
-    box.className = 'section-box';
+    // 节框先建（仅有子节时创建，避免无子节的章下方出现空框）；
+    // 先建是为了让下方 toggle.onclick 能引用到 box，追加放在标题行之后
+    var box = null;
+    if (hasKids) {
+        box = document.createElement('div');
+        box.className = 'section-box collapsed';
+        buildSections(ch.children, box, idx, 1, null);
+    }
 
     var row = document.createElement('div');
     row.className = 'ch-row';
@@ -208,18 +247,11 @@ function buildChapter(ch, idx) {
     row.appendChild(link);
     div.appendChild(row);
 
-    // 节框
-    if (hasKids) {
-        box.classList.add('collapsed');
-        buildSections(ch.children, box, idx, 1, null);
-        addLockIcon(row, box, toggle);   // 统一：右侧上锁图标
-        setupLinkInteractions(link, function() { loadChapter(idx); }, box);  // 有子节：双击=上锁
-    } else {
-        box.style.display = 'none';
-        setupLinkInteractions(link, function() { loadChapter(idx); }, null);  // 无子节：直接跳转
-    }
-    div.appendChild(box);
-    // 存引用用于折叠
+    if (box) div.appendChild(box);   // 节框在章标题行下方
+    if (box) box._toggleEl = toggle;
+    // 单击章标题直接跳转（展开/固定由左侧折叠按钮负责：手动展开 = 固定，不被自动折叠）
+    bindLinkNav(link, function() { loadChapter(idx); });
+    // 存引用用于折叠（无子节 = null，引用处均已判空）
     div._sectionBox = box;
     div._toggle = toggle;
 
@@ -263,14 +295,12 @@ function buildSections(children, container, chapterIdx, depth, parentEl) {
         if (hasKids) {
             let kids = document.createElement('div');   // let：块级作用域，闭包各自捕获
             kids.className = 'sec-kids collapsed';
+            kids._toggleEl = stoggle;
             stoggle.onclick = makeFoldHandler(kids, stoggle);
-            addLockIcon(row, kids, stoggle);   // 统一：右侧上锁图标
-            setupLinkInteractions(link, doSectionNav, kids);  // 有子节：双击=上锁
             buildSections(s.children, kids, chapterIdx, depth + 1, link);
             container.appendChild(kids);
-        } else {
-            setupLinkInteractions(link, doSectionNav, null);  // 无子节：直接跳转
         }
+        bindLinkNav(link, doSectionNav);
     }
 }
 
@@ -290,88 +320,30 @@ function toggleCollapse(el, toggle) {
     }
 }
 
-// ── 章/节统一的折叠 + 上锁逻辑（章节框 .section-box 与节容器 .sec-kids 共用）──
-// 折叠键：展开 → 默认上锁（固定展开，不被自动折叠）；折叠 → 默认解锁（回归初始状态）
+// ── 章/节统一的折叠逻辑（章节框 .section-box 与节容器 .sec-kids 共用）──
+// 折叠按钮即固定开关：手动展开 = 固定（_locked，不被自动折叠）；折叠 = 回归自动布局
 function makeFoldHandler(el, toggle) {
     return function(e) {
         e.stopPropagation();
         if (!el) return;
         el._locked = el.classList.contains('collapsed');
         toggleCollapse(el, toggle);
-        updateLockIcon(el);
     };
 }
 
-// 上锁图标：灰色图钉（Edge 锁定标签页风格），内嵌 SVG
-// 锁定 = 实心图钉；未锁定 = 空心图钉
-var LOCK_ICON_PIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16,9V4h1c0.55,0 1,-0.45 1,-1v0c0,-0.55 -0.45,-1 -1,-1H7C6.45,2 6,2.45 6,3v0c0,0.55 0.45,1 1,1h1v5c0,1.66 -1.34,3 -3,3v2h5.97v7l1,1l1,-1v-7H19v-2C17.34,12 16,10.66 16,9z"/></svg>';
-var LOCK_ICON_UNPIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16,9V4h1c0.55,0 1,-0.45 1,-1v0c0,-0.55 -0.45,-1 -1,-1H7C6.45,2 6,2.45 6,3v0c0,0.55 0.45,1 1,1h1v5c0,1.66 -1.34,3 -3,3v2h5.97v7l1,1l1,-1v-7H19v-2C17.34,12 16,10.66 16,9z M14.83,4H9.17v4.37c0,1.32 -0.83,2.42 -2,2.83V13h9.66v-1.8C16.66,10.79 15.83,9.69 15.83,8.37V4z"/></svg>';
-
-function updateLockIcon(el) {
-    var icon = el._lockEl;
-    if (!icon) return;
-    icon.innerHTML = el._locked ? LOCK_ICON_PIN : LOCK_ICON_UNPIN;
-    icon.classList.toggle('locked', !!el._locked);
-}
-
-// 是否含上锁后代（上锁的节要求其祖先保持展开）
+// 是否含固定展开的后代（固定的节要求其祖先保持展开）
 function hasLockedDescendant(el) {
-    return !!el.querySelector('.lock-icon.locked');
-}
-
-function isInActiveChain(el) {
-    var active = document.querySelector('.sec-link.active');
-    var activeCh = active ? active.closest('.ch-item') : tocItems[currentChapter];
-    if (activeCh && activeCh._sectionBox === el) return true;
-    for (var cur = active; cur && cur.classList.contains('sec-link'); cur = cur._parentSection) {
-        if (getSecKids(cur) === el) return true;
-    }
+    var kids = el.querySelectorAll('.sec-kids');
+    for (var i = 0; i < kids.length; i++) { if (kids[i]._locked) return true; }
     return false;
 }
 
-// 双击标题 / 点击上锁图标：切换固定展开
-function toggleLock(el) {
-    el._locked = !el._locked;
-    if (el._locked) {
-        if (el.classList.contains('collapsed')) toggleCollapse(el, el._toggleEl);
-    } else if (!el.classList.contains('collapsed') && !isInActiveChain(el)) {
-        toggleCollapse(el, el._toggleEl);  // 解锁：不在当前阅读链则收起
-    }
-    updateLockIcon(el);
-}
-
-function addLockIcon(row, el, toggle) {
-    el._toggleEl = toggle;
-    var icon = document.createElement('span');
-    icon.className = 'lock-icon';
-    icon.title = '点击锁定/解锁（锁定后不会被自动折叠）';
-    icon.onclick = function(e) { e.stopPropagation(); toggleLock(el); };
-    row.appendChild(icon);
-    el._lockEl = icon;
-    updateLockIcon(el);
-}
-
-// 链接点击防误判：250ms 内第二次点击视为双击 → 取消跳转、只上锁
-function setupLinkInteractions(link, doNav, lockTarget) {
-    if (!lockTarget) {
-        link.addEventListener('click', function(e) {
-            if (e.button !== 0) return;
-            e.preventDefault();
-            doNav();
-        });
-        return;
-    }
-    var timer = null;
+// 节标题单击：直接跳转（原 250ms 双击判定与双击上锁入口已随图钉一并移除）
+function bindLinkNav(link, doNav) {
     link.addEventListener('click', function(e) {
         if (e.button !== 0) return;
         e.preventDefault();
-        if (timer) { clearTimeout(timer); timer = null; return; }  // 双击第二击 → 取消跳转
-        timer = setTimeout(function() { timer = null; doNav(); }, 250);
-    });
-    link.addEventListener('dblclick', function(e) {
-        e.preventDefault();
-        if (timer) { clearTimeout(timer); timer = null; }
-        toggleLock(lockTarget);
+        doNav();
     });
 }
 
@@ -380,7 +352,10 @@ buildToc();
 // 侧栏章列表（静态，一次性查询缓存）
 var tocItems = document.querySelectorAll('#toc-tree > .ch-item');
 
-// ── 展开当前章；跨章导航时收起其他章框（导航即离开）──
+// ── 展开当前章；其余章框收起，手动展开（固定）的除外 ──
+// 固定语义（与节层一致）：折叠按钮手动展开 = 固定（_locked），滚动/换章/跳转都不折叠；
+// 只有手动折叠回去（_locked=false）才回归自动布局（只展开当前章）。
+// 章框开关只由它自己的折叠按钮控制：节固定不连带章框（章框收起时固定节随之隐藏，回到该章原样恢复）。
 function expandCurrentChapter(idx) {
     var items = tocItems;
     items.forEach(function(div, i) {
@@ -392,14 +367,14 @@ function expandCurrentChapter(idx) {
             if (isCurrent) {
                 // 展开当前章（手动折叠后回归初始，会重新展开）
                 if (box.classList.contains('collapsed')) toggleCollapse(box, div._toggle);
-            } else if (!box.classList.contains('collapsed') && !box._locked && !hasLockedDescendant(box)) {
-                // 导航到新章：收起其他章框；上锁的（或含上锁后代的）除外
+            } else if (!box.classList.contains('collapsed') && !box._locked) {
+                // 导航到新章：收起其他章框；手动展开（固定）的除外
                 toggleCollapse(box, div._toggle);
             }
         }
         var tgl = div._toggle;
         if (tgl) {
-            var isOpen = (isCurrent && box && !box.classList.contains('collapsed'));
+            var isOpen = (box && !box.classList.contains('collapsed'));
             tgl.classList.toggle('open', isOpen);
         }
     });
@@ -475,9 +450,9 @@ function getSecKids(link) {
     return null;
 }
 
-// ── 确定性目录布局：只展开“当前 active 节的祖先链 + 上锁的节”，其余一律折叠 ──
+// ── 确定性目录布局：只展开“当前 active 节的祖先链 + 固定展开的节”，其余一律折叠 ──
 // 无论向上/向下滚离，还是点击跳转，目录状态始终只反映“当前滚动位置对应的内容部分”；
-// 锁定的节（或含上锁后代的节）不受影响。
+// 固定展开的节（或含固定后代的节）不受影响。
 function applySectionLayout(activeLink) {
     var chapterDiv = activeLink ? activeLink.closest('.ch-item') : tocItems[currentChapter];
     if (!chapterDiv) return;
@@ -669,11 +644,11 @@ function updateNavLabel() {
     document.getElementById('ch-nav-next').style.visibility = currentChapter < TOTAL - 1 ? 'visible' : 'hidden';
 }
 
-// ── 侧栏：折叠/展开 + 拖拽调宽 ──
+// ── 展示栏：显示/隐藏（VSCode 活动栏图标开关） + 右缘拖拽调宽 ──
 var sideWrap = document.getElementById('side-wrap');
 var SIDEBAR_MIN = 180;
 var SIDEBAR_KEY_W = 'reader_sidebar_w';
-var SIDEBAR_KEY_C = 'reader_sidebar_collapsed';
+var SIDEBAR_KEY_C = 'reader_panel_hidden';
 
 function setSidebarWidth(w, animate) {
     sideWrap.style.transition = animate ? '' : 'none';
@@ -681,16 +656,8 @@ function setSidebarWidth(w, animate) {
 }
 
 function toggleSidebar() {
-    var collapsed = sideWrap.classList.toggle('collapsed');
-    if (collapsed) {
-        // 清除内联宽度，让 .collapsed 规则生效（收成 76px 竖条）
-        sideWrap.style.width = '';
-        sideWrap.style.transition = '';
-    } else {
-        var saved = parseInt(localStorage.getItem(SIDEBAR_KEY_W) || '280', 10);
-        setSidebarWidth(Math.max(SIDEBAR_MIN, saved), true);
-    }
-    localStorage.setItem(SIDEBAR_KEY_C, collapsed ? '1' : '0');
+    var hidden = sideWrap.classList.toggle('hidden');
+    localStorage.setItem(SIDEBAR_KEY_C, hidden ? '1' : '0');
     requestAnimationFrame(computeRanges);
 }
 
@@ -720,14 +687,83 @@ function toggleSidebar() {
     });
 })();
 
+// ── 展示栏项目：点击标题折叠/展开（VSCode 式）──
+// 展开项平分剩余空间（仅目录展开时即一展到底，无需手动拉伸）；折叠项只留标题行、按文档流聚于顶部
+// 折叠状态不持久化：每次打开书（页面加载）都回归默认布局（目录展开、全书层折叠）
+var pvToc = document.getElementById('pv-toc');
+var pvBook = document.getElementById('pv-book');
+var pvSplit = document.getElementById('pv-splitter');
+var PV_HEADER_H = 30, PV_MIN_BODY = 40;
+
+function setPvOpen(sec, open) {
+    sec.classList.toggle('open', open);
+    sec.classList.toggle('collapsed', !open);
+    sec.style.flex = '';   // 清除拖拽产生的手动高度，回归 flex 分配
+    sec.style.height = '';
+    if (sec === pvToc) pvSplit.style.display = open ? 'block' : 'none';  // 分隔条仅目录展开时有意义
+}
+
+function bindPvToggle(sec) {
+    sec.querySelector('.pv-header').addEventListener('click', function() {
+        setPvOpen(sec, !sec.classList.contains('open'));
+    });
+}
+bindPvToggle(pvToc);
+bindPvToggle(pvBook);
+
+// 分隔条拖拽（底部上拉）：压缩目录高度，拖到只剩标题行 → 自动折叠目录
+(function initPvSplitter() {
+    var dragging = false, panelTop = 0;
+    pvSplit.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        dragging = true;
+        panelTop = document.getElementById('panel').getBoundingClientRect().top;
+        document.body.style.cursor = 'row-resize';
+        document.body.style.userSelect = 'none';
+    });
+    document.addEventListener('mousemove', function(e) {
+        if (!dragging) return;
+        var raw = e.clientY - panelTop;
+        if (raw <= PV_HEADER_H + 10) {   // 拖到底部上拉越过最小高度 → 折叠目录
+            setPvOpen(pvToc, false);
+            dragging = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            return;
+        }
+        var panelH = document.getElementById('panel').offsetHeight;
+        var bookMin = PV_HEADER_H + (pvBook.classList.contains('open') ? PV_MIN_BODY : 0);
+        var h = Math.min(raw, panelH - 5 - bookMin);
+        pvToc.style.flex = 'none';
+        pvToc.style.height = h + 'px';
+    });
+    document.addEventListener('mouseup', function() {
+        if (!dragging) return;
+        dragging = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+    });
+})();
+
+// 页面加载即 HTML 默认布局（目录展开、全书层折叠），无需恢复逻辑
+
+// ── 全书层内容（展示栏底部项目）：来自 /api/layer/book/，Markdown 渲染 ──
+(function loadPvBookLayer() {
+    var el = document.getElementById('pv-book-content');
+    fetch('/api/layer/book/' + encodeURIComponent(BOOK_ID))
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            el.innerHTML = (d && d.content) ? renderMarkdown(d.content) : '<span class="pv-empty">（暂无全书层内容）</span>';
+        })
+        .catch(function() { el.innerHTML = '<span class="pv-empty">加载失败</span>'; });
+})();
+
 // ── 初始化 ──
-// 恢复侧栏状态（折叠与否 + 上次宽度）
+// 恢复展示栏状态（显示/隐藏 + 上次宽度）
 (function initSidebarState() {
     var savedW = parseInt(localStorage.getItem(SIDEBAR_KEY_W) || '280', 10);
     if (localStorage.getItem(SIDEBAR_KEY_C) === '1') {
-        sideWrap.classList.add('collapsed');
-        // 折叠时不能设内联宽度（会覆盖 .collapsed 的 76px）
-        sideWrap.style.width = '';
+        sideWrap.classList.add('hidden');
     } else if (!isNaN(savedW) && savedW >= SIDEBAR_MIN) {
         setSidebarWidth(savedW, false);
     }
@@ -752,6 +788,8 @@ requestAnimationFrame(function() {
 });
 
 mainEl.addEventListener('wheel', function(e) {
+    // 弹窗内滚动只滚弹窗：不冒泡触发主文翻章（弹窗滚到底继续滚时主文会被意外推走/翻章）
+    if (e.target.closest && e.target.closest('.semantic-pop')) return;
     var atBottom = mainEl.scrollTop + mainEl.clientHeight >= mainEl.scrollHeight - 4;
     var atTop = mainEl.scrollTop <= 4;
     if (atBottom && e.deltaY > 30 && !chLock) goChapter(1);
@@ -882,6 +920,9 @@ var AuxLayer = (function() {
     }
 
     // ── 弹窗公共装饰：四角星跳转 + 图钉锁定 + 点击置顶 + 悬停保持/离开关闭（概念/语义共用）──
+    // 弹窗图钉（锁定弹窗位置，与目录折叠按钮无关）：实心=已锁定 / 空心=未锁定
+    var LOCK_ICON_PIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16,9V4h1c0.55,0 1,-0.45 1,-1v0c0,-0.55 -0.45,-1 -1,-1H7C6.45,2 6,2.45 6,3v0c0,0.55 0.45,1 1,1h1v5c0,1.66 -1.34,3 -3,3v2h5.97v7l1,1l1,-1v-7H19v-2C17.34,12 16,10.66 16,9z"/></svg>';
+    var LOCK_ICON_UNPIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16,9V4h1c0.55,0 1,-0.45 1,-1v0c0,-0.55 -0.45,-1 -1,-1H7C6.45,2 6,2.45 6,3v0c0,0.55 0.45,1 1,1h1v5c0,1.66 -1.34,3 -3,3v2h5.97v7l1,1l1,-1v-7H19v-2C17.34,12 16,10.66 16,9z M14.83,4H9.17v4.37c0,1.32 -0.83,2.42 -2,2.83V13h9.66v-1.8C16.66,10.79 15.83,9.69 15.83,8.37V4z"/></svg>';
     function bringToFront(pop) {
         var cur = parseInt(window.getComputedStyle(pop).zIndex, 10) || 0;
         if (cur > _popZ) _popZ = cur;   // 吸收外部更高的初始 z

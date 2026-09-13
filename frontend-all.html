@@ -76,13 +76,41 @@
    ═══════════════════════════════════════════════ */
 .view-reader { display:flex; height:100vh; overflow:hidden; font-family:Georgia,serif; background:#fff; }
 .view-reader #side-wrap { position:relative; display:flex; flex-direction:column; flex-shrink:0; width:280px; min-width:0; transition:width .25s; margin-left:52px; }
-.view-reader #side-wrap.collapsed { width:76px; }
-.view-reader #side-wrap.collapsed #sidebar,
-.view-reader #side-wrap.collapsed #resizer { display:none; }
-.view-reader #sidebar { flex-grow:1; min-width:0; background:#f8f9fa; border-right:1px solid #e9ecef; overflow-y:auto; padding:12px 12px 16px; }
+.view-reader #side-wrap.hidden { display:none; }
+.view-reader #panel { flex-grow:1; min-height:0; display:flex; flex-direction:column; background:#f8f9fa; border-right:1px solid #e9ecef; }
+/* VSCode 布局：展开项平分剩余空间（仅目录展开时=一展到底），折叠项只留标题行、按文档流聚于顶部 */
+.view-reader .pv { display:flex; flex-direction:column; min-height:0; overflow:hidden; }
+.view-reader .pv.open { flex:1 1 0; }
+.view-reader #panel .pv.collapsed { flex:none; }
+.view-reader .pv-header { flex-shrink:0; display:flex; align-items:center; gap:6px; height:30px; padding:0 10px; cursor:pointer; user-select:none; font-family:-apple-system,sans-serif; font-size:.82em; font-weight:bold; color:#495057; letter-spacing:.5px; background:#f1f3f5; border-bottom:1px solid #dee2e6; }
+.view-reader .pv-header:hover { color:#1a5276; background:#e7f1fa; }
+.view-reader .pv-chevron { width:16px; height:16px; flex-shrink:0; color:#868e96; transition:transform .15s ease; }
+.view-reader .pv-header:hover .pv-chevron { color:#1a5276; }
+.view-reader .pv.open > .pv-header .pv-chevron { transform:rotate(90deg); }
+.view-reader .pv-body { flex:1 1 0; min-height:0; overflow-y:auto; padding:12px 12px 16px; }
+.view-reader .pv.collapsed .pv-body { display:none; }
+.view-reader #pv-splitter { flex-shrink:0; height:5px; cursor:row-resize; }
+.view-reader #pv-splitter:hover { background:rgba(52,152,219,.25); }
+/* ── VSCode 风格滚动条：滚动中显示，停止后隐藏 ── */
+::-webkit-scrollbar { width:10px; height:10px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background:transparent; }
+::-webkit-scrollbar-thumb { background:transparent; border-radius:5px; border:2px solid transparent; background-clip:padding-box; }
+::-webkit-scrollbar-thumb:hover { background:rgba(121,121,121,.6); background-clip:padding-box; }
+.scrolling::-webkit-scrollbar-thumb { background:rgba(121,121,121,.45); background-clip:padding-box; }
+.scrolling::-webkit-scrollbar-thumb:hover { background:rgba(121,121,121,.6); background-clip:padding-box; }
+* { scrollbar-width:thin; scrollbar-color:transparent transparent; }
+.scrolling { scrollbar-color:rgba(121,121,121,.45) transparent; }
 .view-reader #resizer { position:absolute; top:0; right:-3px; width:6px; height:100%; cursor:col-resize; z-index:120; transition:background .15s; }
 .view-reader #resizer:hover { background:rgba(52,152,219,.25); }
-.view-reader .panel-header { font-family:-apple-system,sans-serif; font-size:.8em; font-weight:bold; color:#868e96; letter-spacing:.5px; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #dee2e6; }
+.view-reader .pv-md { line-height:1.6; font-size:.88em; color:#212529; word-break:break-word; }
+.view-reader .pv-md p { margin:.4em 0; }
+.view-reader .pv-md h1,.view-reader .pv-md h2,.view-reader .pv-md h3,.view-reader .pv-md h4 { font-family:-apple-system,sans-serif; margin:.8em 0 .3em; color:#1a1a2e; }
+.view-reader .pv-md h1 { font-size:1.15em; } .view-reader .pv-md h2 { font-size:1.08em; } .view-reader .pv-md h3,.view-reader .pv-md h4 { font-size:1em; }
+.view-reader .pv-md ul,.view-reader .pv-md ol { margin:.3em 0; padding-left:1.4em; }
+.view-reader .pv-md li { margin:.15em 0; }
+.view-reader .pv-md code { background:#eef3f7; border-radius:3px; padding:0 3px; font-size:.92em; }
+.view-reader .pv-md blockquote { margin:.4em 0; padding:2px 10px; border-left:3px solid #a5d8ff; color:#495057; }
+.view-reader .pv-empty { color:#adb5bd; font-size:.9em; }
 .view-reader .ch-item { margin-bottom:6px; }
 .view-reader .ch-row { display:flex; align-items:center; }
 .view-reader .ch-link { flex:1; text-decoration:none; color:#495057; font-size:.9em; font-weight:500; padding:5px 10px; border-radius:4px; line-height:1.35; font-family:-apple-system,sans-serif; cursor:pointer; }
@@ -108,10 +136,6 @@
 .view-reader .sec-toggle.open { transform:rotate(90deg); }
 .view-reader .sec-kids { overflow:hidden; transition:max-height .2s,opacity .15s; }
 .view-reader .sec-kids.collapsed { max-height:0!important; opacity:0; }
-.view-reader .lock-icon { margin-left:auto; cursor:pointer; display:flex; align-items:center; justify-content:center; width:18px; height:18px; opacity:.3; user-select:none; flex-shrink:0; color:#6c757d; }
-.view-reader .lock-icon svg { width:13px; height:13px; fill:currentColor; }
-.view-reader .lock-icon:hover { opacity:.85; }
-.view-reader .lock-icon.locked { opacity:1; }
 .view-reader .sec-row.d1 { padding-left:8px; }
 .view-reader .sec-row.d2 { padding-left:20px; }
 .view-reader .sec-row.d3 { padding-left:32px; }
@@ -251,7 +275,7 @@
         <span class="bb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></span>
     </button>
     <div class="bb-divider" id="bb-reader-divider" style="display:none;"></div>
-    <button class="bb-item" id="bb-toc" style="display:none;" title="目录（展开 / 收起章节目录）">
+    <button class="bb-item" id="bb-toc" style="display:none;" title="展示栏（显示 / 隐藏）">
         <span class="bb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg></span>
     </button>
     <button class="bb-item" id="bb-aux" style="display:none;" title="辅助键（全书层 / 章节层）">
@@ -318,11 +342,30 @@
 <section class="view view-reader view-hidden" id="view-reader">
 
     <div id="side-wrap">
-        <div id="sidebar">
-            <div class="panel-header">目 录</div>
-            <div id="toc-tree"></div>
+        <div id="panel">
+            <!-- 项目：目录（顶部，默认展开 = 一展到底） -->
+            <section class="pv open" id="pv-toc">
+                <div class="pv-header" title="点击折叠 / 展开"><svg class="pv-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="pv-title">目 录</span></div>
+                <div class="pv-body"><div id="toc-tree"></div></div>
+            </section>
+            <div id="pv-splitter" title="拖动调整目录高度（拖到顶部自动折叠）"></div>
+            <!-- 项目：全书层（默认折叠） -->
+            <section class="pv collapsed" id="pv-book">
+                <div class="pv-header" title="点击折叠 / 展开"><svg class="pv-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="pv-title">全书层</span></div>
+                <div class="pv-body"><div class="pv-md" id="pv-book-content">
+                    <h2>《江村经济》全书概览</h2>
+                    <p>本书以江苏省吴江县开弦弓村（学术名"江村"）为样本，描述二十世纪三十年代中国江南农村的经济与社会结构，是中国社会人类学的奠基之作。</p>
+                    <h3>主线</h3>
+                    <ul>
+                        <li><strong>家庭</strong>：扩大的家庭、婚姻与财产传递</li>
+                        <li><strong>生计</strong>：农业为基，蚕丝业为补充的家庭手工业</li>
+                        <li><strong>变革</strong>：世界市场冲击下乡村工业的衰落与重组</li>
+                    </ul>
+                    <blockquote>核心问题：传统农村在现代化冲击下如何维持并调整自身。</blockquote>
+                </div></div>
+            </section>
         </div>
-        <div id="resizer" title="拖动调整目录宽度"></div>
+        <div id="resizer" title="拖动调整栏宽"></div>
     </div>
 
     <div id="main">
@@ -628,9 +671,6 @@ var TOTAL = 4;
 var currentChapter = 0;
 var DEMO_TITLES = ['第一章 调查区域', '第二章 家', '第三章 财产与继承', '第四章 职业分化'];
 
-var LOCK_ICON_PIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16,9V4h1c0.55,0 1,-0.45 1,-1v0c0,-0.55 -0.45,-1 -1,-1H7C6.45,2 6,2.45 6,3v0c0,0.55 0.45,1 1,1h1v5c0,1.66 -1.34,3 -3,3v2h5.97v7l1,1l1,-1v-7H19v-2C17.34,12 16,10.66 16,9z"/></svg>';
-var LOCK_ICON_UNPIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16,9V4h1c0.55,0 1,-0.45 1,-1v0c0,-0.55 -0.45,-1 -1,-1H7C6.45,2 6,2.45 6,3v0c0,0.55 0.45,1 1,1h1v5c0,1.66 -1.34,3 -3,3v2h5.97v7l1,1l1,-1v-7H19v-2C17.34,12 16,10.66 16,9z M14.83,4H9.17v4.37c0,1.32 -0.83,2.42 -2,2.83V13h9.66v-1.8C16.66,10.79 15.83,9.69 15.83,8.37V4z"/></svg>';
-
 // ── 示例目录树（对应阅读页左侧目录） ──
 var tocTree = [
     { title: '第一章 调查区域', href: 'ch1.html', children: [
@@ -663,60 +703,24 @@ function toggleCollapse(el, toggle) {
         if (toggle) toggle.classList.remove('open');
     }
 }
+// 折叠按钮即固定开关：手动展开 = 固定（_locked，不被自动折叠）；折叠 = 回归自动布局
 function makeFoldHandler(el, toggle) {
     return function(e) {
         e.stopPropagation();
         if (!el) return;
         el._locked = el.classList.contains('collapsed');
         toggleCollapse(el, toggle);
-        updateLockIcon(el);
     };
 }
-function updateLockIcon(el) {
-    var icon = el._lockEl;
-    if (!icon) return;
-    icon.innerHTML = el._locked ? LOCK_ICON_PIN : LOCK_ICON_UNPIN;
-    icon.classList.toggle('locked', !!el._locked);
-}
+// 是否含固定展开的后代（固定的节要求其祖先保持展开）
 function hasLockedDescendant(el) {
-    return !!el.querySelector('.lock-icon.locked');
+    var kids = el.querySelectorAll('.sec-kids');
+    for (var i = 0; i < kids.length; i++) { if (kids[i]._locked) return true; }
+    return false;
 }
-function addLockIcon(row, el, toggle) {
-    el._toggleEl = toggle;
-    var icon = document.createElement('span');
-    icon.className = 'lock-icon';
-    icon.title = '点击锁定/解锁（锁定后不会被自动折叠）';
-    icon.onclick = function(e) { e.stopPropagation(); toggleLock(el); };
-    row.appendChild(icon);
-    el._lockEl = icon;
-    updateLockIcon(el);
-}
-function toggleLock(el) {
-    el._locked = !el._locked;
-    if (el._locked) {
-        if (el.classList.contains('collapsed')) toggleCollapse(el, el._toggleEl);
-    } else if (!el.classList.contains('collapsed')) {
-        toggleCollapse(el, el._toggleEl);
-    }
-    updateLockIcon(el);
-}
-function setupLinkInteractions(link, doNav, lockTarget) {
-    if (!lockTarget) {
-        link.addEventListener('click', function(e) { if (e.button !== 0) return; e.preventDefault(); doNav(); });
-        return;
-    }
-    var timer = null;
-    link.addEventListener('click', function(e) {
-        if (e.button !== 0) return;
-        e.preventDefault();
-        if (timer) { clearTimeout(timer); timer = null; return; }
-        timer = setTimeout(function() { timer = null; doNav(); }, 250);
-    });
-    link.addEventListener('dblclick', function(e) {
-        e.preventDefault();
-        if (timer) { clearTimeout(timer); timer = null; }
-        toggleLock(lockTarget);
-    });
+// 节标题单击：直接跳转（原双击上锁入口已随图钉一并移除）
+function bindLinkNav(link, doNav) {
+    link.addEventListener('click', function(e) { if (e.button !== 0) return; e.preventDefault(); doNav(); });
 }
 function buildSections(children, container, chapterIdx, depth, parentEl) {
     for (var i = 0; i < children.length; i++) {
@@ -746,22 +750,25 @@ function buildSections(children, container, chapterIdx, depth, parentEl) {
         if (hasKids) {
             var kids = document.createElement('div');
             kids.className = 'sec-kids collapsed';
+            kids._toggleEl = stoggle;
             stoggle.onclick = makeFoldHandler(kids, stoggle);
-            addLockIcon(row, kids, stoggle);
-            setupLinkInteractions(link, doSectionNav, kids);
             buildSections(s.children, kids, chapterIdx, depth + 1, link);
             container.appendChild(kids);
-        } else {
-            setupLinkInteractions(link, doSectionNav, null);
         }
+        bindLinkNav(link, doSectionNav);
     }
 }
 function buildChapter(ch, idx) {
     var div = document.createElement('div');
     div.className = 'ch-item';
     var hasKids = ch.children && ch.children.length > 0;
-    var box = document.createElement('div');
-    box.className = 'section-box';
+    // 节框先建（仅有子节时创建）；追加放在标题行之后
+    var box = null;
+    if (hasKids) {
+        box = document.createElement('div');
+        box.className = 'section-box collapsed';
+        buildSections(ch.children, box, idx, 1, null);
+    }
     var row = document.createElement('div');
     row.className = 'ch-row';
     var toggle = document.createElement('span');
@@ -776,16 +783,9 @@ function buildChapter(ch, idx) {
     link.href = '#';
     row.appendChild(link);
     div.appendChild(row);
-    if (hasKids) {
-        box.classList.add('collapsed');
-        buildSections(ch.children, box, idx, 1, null);
-        addLockIcon(row, box, toggle);
-        setupLinkInteractions(link, function() { window.demoNavTo(idx); }, box);
-    } else {
-        box.style.display = 'none';
-        setupLinkInteractions(link, function() { window.demoNavTo(idx); }, null);
-    }
-    div.appendChild(box);
+    if (box) div.appendChild(box);   // 节框在章标题行下方
+    if (box) box._toggleEl = toggle;
+    bindLinkNav(link, function() { window.demoNavTo(idx); });
     div._sectionBox = box;
     div._toggle = toggle;
     return div;
@@ -798,6 +798,8 @@ function buildToc() {
 buildToc();
 var tocItems = document.querySelectorAll('#toc-tree > .ch-item');
 
+// ── 展开当前章；其余章框收起，手动展开（固定）的除外 ──
+// 固定语义（与节层一致）：手动展开 = 固定，滚动/换章都不折叠；手动折叠回去才回归自动布局
 function expandCurrentChapter(idx) {
     tocItems.forEach(function(div, i) {
         var link = div.querySelector('.ch-link');
@@ -807,12 +809,12 @@ function expandCurrentChapter(idx) {
         if (box) {
             if (isCurrent) {
                 if (box.classList.contains('collapsed')) toggleCollapse(box, div._toggle);
-            } else if (!box.classList.contains('collapsed') && !box._locked && !hasLockedDescendant(box)) {
+            } else if (!box.classList.contains('collapsed') && !box._locked) {
                 toggleCollapse(box, div._toggle);
             }
         }
         var tgl = div._toggle;
-        if (tgl) tgl.classList.toggle('open', (isCurrent && box && !box.classList.contains('collapsed')));
+        if (tgl) tgl.classList.toggle('open', (box && !box.classList.contains('collapsed')));
     });
 }
 expandCurrentChapter(0);
@@ -842,7 +844,7 @@ window.demoNav = function(delta) {
     window.demoNavTo(next);
 };
 
-// ── 侧栏：折叠 / 拖拽调宽 ──
+// ── 展示栏：显示 / 隐藏（VSCode 活动栏图标开关） + 右缘拖拽调宽 ──
 var sideWrap = document.getElementById('side-wrap');
 var SIDEBAR_MIN = 180;
 function setSidebarWidth(w, animate) {
@@ -850,11 +852,74 @@ function setSidebarWidth(w, animate) {
     sideWrap.style.width = w + 'px';
 }
 function toggleSidebar() {
-    var collapsed = sideWrap.classList.toggle('collapsed');
-    if (collapsed) { sideWrap.style.width = ''; sideWrap.style.transition = ''; }
-    else { setSidebarWidth(280, true); }
+    sideWrap.classList.toggle('hidden');
 }
 window.toggleSidebar = toggleSidebar;
+
+// ── 展示栏项目：点击标题折叠/展开（VSCode 式）──
+// 展开项平分剩余空间（仅目录展开时即一展到底）；折叠项只留标题行、按文档流聚于顶部
+var pvToc = document.getElementById('pv-toc');
+var pvBook = document.getElementById('pv-book');
+var pvSplit = document.getElementById('pv-splitter');
+var PV_HEADER_H = 30, PV_MIN_BODY = 40;
+function setPvOpen(sec, open) {
+    sec.classList.toggle('open', open);
+    sec.classList.toggle('collapsed', !open);
+    sec.style.flex = '';
+    sec.style.height = '';
+    if (sec === pvToc) pvSplit.style.display = open ? 'block' : 'none';  // 分隔条仅目录展开时有意义
+}
+document.querySelectorAll('.pv-header').forEach(function(head) {
+    head.addEventListener('click', function() {
+        var sec = head.closest('.pv');
+        setPvOpen(sec, !sec.classList.contains('open'));
+    });
+});
+// 分隔条拖拽（底部上拉）：压缩目录高度，拖到只剩标题行 → 自动折叠目录
+(function initPvSplitter() {
+    var dragging = false, panelTop = 0;
+    pvSplit.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        dragging = true;
+        panelTop = document.getElementById('panel').getBoundingClientRect().top;
+        document.body.style.cursor = 'row-resize';
+        document.body.style.userSelect = 'none';
+    });
+    document.addEventListener('mousemove', function(e) {
+        if (!dragging) return;
+        var raw = e.clientY - panelTop;
+        if (raw <= PV_HEADER_H + 10) {   // 拖到底部上拉越过最小高度 → 折叠目录
+            setPvOpen(pvToc, false);
+            dragging = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            return;
+        }
+        var panelH = document.getElementById('panel').offsetHeight;
+        var bookMin = PV_HEADER_H + (pvBook.classList.contains('open') ? PV_MIN_BODY : 0);
+        var h = Math.min(raw, panelH - 5 - bookMin);
+        pvToc.style.flex = 'none';
+        pvToc.style.height = h + 'px';
+    });
+    document.addEventListener('mouseup', function() {
+        if (!dragging) return;
+        dragging = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+    });
+})();
+
+// ── VSCode 风格滚动条：滚动中显示，停止 ~0.9s 后隐藏 ──
+(function() {
+    var HIDE_DELAY = 900;
+    document.addEventListener('scroll', function(e) {
+        var t = e.target;
+        if (!t || t.nodeType !== 1) return;
+        t.classList.add('scrolling');
+        clearTimeout(t._sbHide);
+        t._sbHide = setTimeout(function() { t.classList.remove('scrolling'); }, HIDE_DELAY);
+    }, true);
+})();
 (function initSidebarResize() {
     var rs = document.getElementById('resizer');
     var dragging = false, startX = 0, startW = 0;
@@ -921,6 +986,9 @@ function positionStaticPops(autoScroll) {
 window.positionStaticPops = positionStaticPops;
 
 /* ── 弹窗通用交互：图钉 / 拖动 / 拉伸 / 置顶 / 悬停显示 ── */
+// 弹窗图钉（锁定弹窗位置，与目录折叠按钮无关）：实心=已锁定 / 空心=未锁定
+var LOCK_ICON_PIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16,9V4h1c0.55,0 1,-0.45 1,-1v0c0,-0.55 -0.45,-1 -1,-1H7C6.45,2 6,2.45 6,3v0c0,0.55 0.45,1 1,1h1v5c0,1.66 -1.34,3 -3,3v2h5.97v7l1,1l1,-1v-7H19v-2C17.34,12 16,10.66 16,9z"/></svg>';
+var LOCK_ICON_UNPIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16,9V4h1c0.55,0 1,-0.45 1,-1v0c0,-0.55 -0.45,-1 -1,-1H7C6.45,2 6,2.45 6,3v0c0,0.55 0.45,1 1,1h1v5c0,1.66 -1.34,3 -3,3v2h5.97v7l1,1l1,-1v-7H19v-2C17.34,12 16,10.66 16,9z M14.83,4H9.17v4.37c0,1.32 -0.83,2.42 -2,2.83V13h9.66v-1.8C16.66,10.79 15.83,9.69 15.83,8.37V4z"/></svg>';
 (function() {
     var _popZ = 600;
     var _popDrag = null, _popResize = null;

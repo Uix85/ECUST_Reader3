@@ -11,9 +11,10 @@ ECUST_Reader3 —— FastAPI 阅读服务器（路由层）。
 import os
 import shutil
 import tempfile
+import urllib.parse
 
 from fastapi import FastAPI, Request, HTTPException, File, UploadFile
-from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from models import Book
@@ -119,9 +120,17 @@ async def upload_epub(file: UploadFile = File(...)):
 
 # ── 首页跳转 GET /read/{book_id} → 第 0 章 ──
 @app.get("/read/{book_id}", response_class=HTMLResponse)
-async def redirect_to_first_chapter(request: Request, book_id: str):
-    """【首页跳转】重定向到书籍第 0 章"""
-    return await read_chapter(request=request, book_id=book_id, chapter_idx=0)
+async def redirect_to_first_chapter(book_id: str):
+    """【首页跳转】重定向到 /read/{book_id}/0。
+    必须真重定向（而非直接渲染）：正文图片 src 是相对路径（images/...），
+    若 URL 停在 /read/{book_id} 会解析成 /read/images/... 导致图片 404。"""
+    return RedirectResponse(url=f"/read/{urllib.parse.quote(book_id)}/0", status_code=302)
+
+
+@app.get("/favicon.ico")
+async def favicon():
+    """【图标占位】避免浏览器自动请求在控制台刷 404"""
+    return Response(status_code=204)
 
 # ── 章节切片共用（页面路由与 API 共用，避免重复逻辑）──
 def _get_chapter_slice(book_id: str, book: Book, chapter_idx: int):
